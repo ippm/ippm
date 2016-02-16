@@ -1,0 +1,17 @@
+{
+  "name": "ippm-node",
+  "version": "0.0.0",
+  "description": "Node module for ippm",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ippm/ippm-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ippm/ippm-node/issues"
+  },
+  "homepage": "https://github.com/ippm/ippm-node",
+  "dependencies": {
+    "core-js": "^2.1.0"
+  }
+}
