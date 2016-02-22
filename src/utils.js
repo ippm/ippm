@@ -7,7 +7,7 @@ export function findDirWithFile(startDir, filename) {
 		try {
 			fs.accessSync(`${dir}/${filename}`, fs.R_OK);
 		} catch (e) {
-			if (!(code in e) || e.code !== 'ENOENT') {
+			if (!('code' in e) || e.code !== 'ENOENT') {
 				throw e;
 			}
 
@@ -22,4 +22,8 @@ export function findDirWithFile(startDir, filename) {
 
 		return dir;
 	}
+}
+
+export function getIpfsPathByPackageInfo(pakName, pakInfo) {
+	return `/ipfs/${pakInfo.ipfs}/${pakName}`;
 }

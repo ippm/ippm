@@ -12,6 +12,7 @@
   },
   "homepage": "https://github.com/ippm/ippm-node",
   "dependencies": {
+    "babel-runtime": "^6.5.0",
     "core-js": "^2.1.0"
   }
 }

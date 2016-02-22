@@ -1,25 +1,25 @@
-import startsWith from 'core-js/library/fn/string/starts-with';
-import {findDirWithFile} from './utils';
+import startsWith from 'core-js/library/fn/string/virtual/starts-with';
+import {findDirWithFile, getIpfsPathByPackageInfo} from './utils';
+import Store from './store';
 import * as fs from 'fs';
 import * as path from 'path';
+import {patch as _patch} from './patch';
 
 const MANIFEST_FILENAME = 'ippm.lock';
 
-const moduleDir = path.dirname(module.filename);
-const dir = findDirWithFile(moduleDir, MANIFEST_FILENAME);
-if (!dir) {
-	throw new Error(`unable to find the manifest ${MANIFEST_FILENAME} in ${moduleDir} or parents`);
+const rootPackagePath = findDirWithFile(path.dirname(module.parent.filename), MANIFEST_FILENAME);
+if (!rootPackagePath) {
+	throw new Error(`unable to find the manifest file "${MANIFEST_FILENAME}"`);
 }
 
-const fileContent = fs.readFileSync(`${dir}/${MANIFEST_FILENAME}`, 'utf8');
+const fileContent = fs.readFileSync(`${rootPackagePath}/${MANIFEST_FILENAME}`, 'utf8');
 const manifest = JSON.parse(fileContent);
 
-const rootPackage = {
-	path: dir,
-};
+const store = new Store({
+	path: rootPackagePath,
+});
 
-const Module = module.constructor;
-const origResolveFilename = Module._resolveFilename;
+const origResolveFilename = module.constructor._resolveFilename;
 const natives = process.binding('natives');
 
 function resolveFilename(request, parent) {
@@ -27,11 +27,14 @@ function resolveFilename(request, parent) {
 		return request;
 	}
 
-	if (startsWith(request, './') || startsWith(request, '..')) {
-		return origResolveFilename(request, parent);
-	}
+	const parentPackage = store.getByFilePath(parent.filename);
 
-	if (path.isAbsolute(request)) {
+	const redirectToOrig =
+		!parentPackage // no parent ippm package found
+		|| request::startsWith('./') || request::startsWith('..') // local relative
+		|| path.isAbsolute(request); // absolute
+
+	if (redirectToOrig) {
 		return origResolveFilename(request, parent);
 	}
 
@@ -39,7 +42,48 @@ function resolveFilename(request, parent) {
 	const reqId = reqParts[1];
 	const reqPath = reqParts[2];
 
-	return origResolveFilename(request, parent);
+	const deps = manifest.packages[parentPackage.name].dependencies;
+	const pakName = `${reqId}@${deps[reqId]}`;
+
+	const pak = store.getByName(pakName);
+	const pakInfo = manifest.packages[pakName];
+
+	let pakPath;
+
+	if (pak) {
+		pakPath = pak.path;
+	} else {
+		pakPath = getIpfsPathByPackageInfo(pakName, pakInfo);
+
+		store.add({
+			name: pakName,
+			path: pakPath,
+		});
+	}
+
+	let reqPathNorm = path.join(pakPath, reqPath || pakInfo.main || 'index.js');
+
+	try {
+		if (fs.statSync(reqPathNorm).isDirectory()) {
+			reqPathNorm = path.join(reqPathNorm, 'index.js');
+		}
+	} catch (e) {
+		if (!('code' in e) || e.code !== 'ENOENT') {
+			throw e;
+		}
+	}
+
+	if (path.extname(reqPathNorm).length === 0) {
+		reqPathNorm += '.js';
+	}
+
+	console.log(reqPathNorm);
+
+	return reqPathNorm;
 }
 
-Module._resolveFilename = resolveFilename;
+export function patch() {
+	return _patch(resolveFilename);
+}
+
+export {unpatch} from './patch';
