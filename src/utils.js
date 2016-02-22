@@ -24,6 +24,30 @@ export function findDirWithFile(startDir, filename) {
 	}
 }
 
-export function getIpfsPathByPackageInfo(pakName, pakInfo) {
-	return `/ipfs/${pakInfo.ipfs}/${pakName}`;
+export function getIpfsPathByPackageInfo(pakInfo) {
+	return `/ipfs/${pakInfo.ipfs}/${pakInfo.name}`;
+}
+
+export const MANIFEST_FILENAME = 'ippm.lock';
+
+export function findManifestFile(dir) {
+	const rootPackagePath = findDirWithFile(dir, MANIFEST_FILENAME);
+	if (!rootPackagePath) {
+		throw new Error(`unable to find the manifest file "${MANIFEST_FILENAME}"`);
+	}
+	return rootPackagePath;
+}
+
+
+export function readManifestFile(dir) {
+	const fileContent = fs.readFileSync(`${dir}/${MANIFEST_FILENAME}`, 'utf8');
+	const manifest = JSON.parse(fileContent);
+
+	Object.keys(manifest.packages || {}).forEach(k => {
+		manifest.packages[k].name = k;
+		const pakInfo = manifest.packages[k];
+		manifest.packages[k] = Object.assign({dependencies: {}, main: 'index.js'}, pakInfo);
+	});
+
+	return manifest;
 }

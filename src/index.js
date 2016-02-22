@@ -1,23 +1,17 @@
 import startsWith from 'core-js/library/fn/string/virtual/starts-with';
-import {findDirWithFile, getIpfsPathByPackageInfo} from './utils';
+import {getIpfsPathByPackageInfo, findManifestFile, readManifestFile} from './utils';
 import Store from './store';
 import * as fs from 'fs';
 import * as path from 'path';
 import {patch as _patch} from './patch';
 
-const MANIFEST_FILENAME = 'ippm.lock';
-
-const rootPackagePath = findDirWithFile(path.dirname(module.parent.filename), MANIFEST_FILENAME);
-if (!rootPackagePath) {
-	throw new Error(`unable to find the manifest file "${MANIFEST_FILENAME}"`);
-}
-
-const fileContent = fs.readFileSync(`${rootPackagePath}/${MANIFEST_FILENAME}`, 'utf8');
-const manifest = JSON.parse(fileContent);
+const rootPackagePath = findManifestFile(path.dirname(module.parent.filename));
 
 const store = new Store({
 	path: rootPackagePath,
 });
+
+const manifest = readManifestFile(rootPackagePath);
 
 const origResolveFilename = module.constructor._resolveFilename;
 const natives = process.binding('natives');
@@ -53,7 +47,7 @@ function resolveFilename(request, parent) {
 	if (pak) {
 		pakPath = pak.path;
 	} else {
-		pakPath = getIpfsPathByPackageInfo(pakName, pakInfo);
+		pakPath = getIpfsPathByPackageInfo(pakInfo);
 
 		store.add({
 			name: pakName,
@@ -61,7 +55,7 @@ function resolveFilename(request, parent) {
 		});
 	}
 
-	let reqPathNorm = path.join(pakPath, reqPath || pakInfo.main || 'index.js');
+	let reqPathNorm = path.join(pakPath, reqPath || pakInfo.main);
 
 	try {
 		if (fs.statSync(reqPathNorm).isDirectory()) {
