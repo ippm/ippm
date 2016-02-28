@@ -1,9 +1,9 @@
 import startsWith from 'core-js/library/fn/string/virtual/starts-with';
-import {getIpfsPathByPackageInfo, findManifestFile, readManifestFile} from './utils';
-import Store from './store';
+import {getIpfsPathByPackageInfo, findManifestFile, readManifestFile} from './ippm-node/utils';
+import Store from './ippm-node/store';
 import * as fs from 'fs';
 import * as path from 'path';
-import {patch as _patch} from './patch';
+import {patch as _patch} from './ippm-node/patch';
 
 const rootPackagePath = findManifestFile(path.dirname(module.parent.filename));
 
@@ -80,4 +80,4 @@ export function patch() {
 	return _patch(resolveFilename);
 }
 
-export {unpatch} from './patch';
+export {unpatch} from './ippm-node/patch';

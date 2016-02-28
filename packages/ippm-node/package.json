@@ -2,7 +2,8 @@
   "name": "ippm-node",
   "version": "0.0.0",
   "description": "Node module for ippm",
-  "main": "index.js",
+  "main": "ippm-node.js",
+  "main:production": "ippm-node.min.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ippm/ippm-node.git"

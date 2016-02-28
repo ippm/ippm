@@ -15,36 +15,32 @@ const $ = lazyReq(require, {
 	mocha: 'gulp-mocha',
 	istanbul: 'gulp-istanbul',
 	isparta: 'isparta',
-	rollup: ['rollup', 'rollup'],
+	rollup: 'gulp-rollup',
 	rollupBabel: ['rollup-plugin-babel'],
+	filter: 'gulp-filter',
 });
 
-gulp.task('build', ['build-es5', 'build-es2015', 'min-es5']);
-
-gulp.task('build-es5', async () => {
-	const bundle = await $.rollup({
-		entry: './src/index.js',
-		external: ['babel-runtime'],
-		plugins: [
-			$.rollupBabel({
-				babelrc: false,
-				presets: ['es2015-rollup'],
-				plugins: ['transform-runtime', 'transform-function-bind'],
-				runtimeHelpers: true,
-			}),
-		],
-	});
-
-	await bundle.write({
-		dest: './build/index.js',
-		format: 'cjs',
-		sourceMap: true,
-	});
-});
-
-gulp.task('min-es5', ['build-es5'], () =>
-	gulp.src('./build/index.js')
-		.pipe($.sourcemaps.init({loadMaps: true}))
+gulp.task('build', () =>
+	gulp.src('./src/*.js', {read: false})
+		.pipe($.rollup({
+			format: 'cjs',
+			sourceMap: true,
+			external: ['babel-runtime'],
+			plugins: [
+				$.rollupBabel({
+					babelrc: false,
+					presets: ['es2015-rollup'],
+					plugins: ['transform-runtime', 'transform-function-bind'],
+					runtimeHelpers: true,
+				}),
+			],
+		}))
+		.pipe($.rename(p => {
+			p.dirname += `/${p.basename}`;
+		}))
+		.pipe($.sourcemaps.write('./'))
+		.pipe(gulp.dest('packages'))
+		.pipe($.filter(['**/*.js']))
 		.pipe($.env.set({
 			NODE_ENV: 'production',
 		}))
@@ -52,29 +48,15 @@ gulp.task('min-es5', ['build-es5'], () =>
 			babelrc: false,
 			plugins: ['transform-inline-environment-variables'],
 		}))
-		.pipe($.uglify())
-		.pipe($.rename('index.min.js'))
+		.pipe($.uglify({
+			mangle: {
+				toplevel: true,
+			},
+		}))
+		.pipe($.rename({suffix: '.min'}))
 		.pipe($.sourcemaps.write('./'))
-		.pipe(gulp.dest('build'))
+		.pipe(gulp.dest('packages'))
 );
-
-gulp.task('build-es2015', async () => {
-	const bundle = await $.rollup({
-		entry: './src/index.js',
-		plugins: [
-			$.rollupBabel({
-				babelrc: false,
-				plugins: ['transform-function-bind'],
-				runtimeHelpers: true,
-			}),
-		],
-	});
-
-	await bundle.write({
-		dest: './build/index.es2015.js',
-		sourceMap: true,
-	});
-});
 
 gulp.task('lint', () =>
 	gulp.src(['./src/**/*.js', './gulpfile.babel.js', './test/**/*.js'])
@@ -85,10 +67,7 @@ gulp.task('lint', () =>
 );
 
 gulp.task('test', (cb) => {
-	gulp.src([
-		'./src/**/*.js',
-		'!./src/deprecate.js',
-	])
+	gulp.src('./src/**/*.js')
 		.pipe($.istanbul({
 			instrumenter: $.isparta.Instrumenter,
 			includeUntested: true,
@@ -107,8 +86,8 @@ gulp.task('test', (cb) => {
 
 gulp.task('clean', () =>
 	$.del([
-		'./build/**/*',
-		'!./build/{,package.json,README.md}',
+		'./packages/*/**',
+		'!./packages/*/{,package.json,README.md}',
 		'./coverage',
 	])
 );
