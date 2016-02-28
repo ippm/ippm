@@ -2,7 +2,6 @@ import gulp from 'gulp';
 import lazyReq from 'lazyreq';
 
 const $ = lazyReq(require, {
-	newer: 'gulp-newer',
 	cached: 'gulp-cached',
 	babel: 'gulp-babel',
 	env: 'gulp-env',
@@ -91,10 +90,6 @@ gulp.task('clean', () =>
 		'./coverage',
 	])
 );
-
-gulp.task('watch', ['build', 'lint'], () => {
-	gulp.watch('./src/**/*.js', ['build', 'lint']);
-});
 
 gulp.task('default', (cb) => {
 	$.runSequence(
