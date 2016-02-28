@@ -3,7 +3,6 @@ import {getIpfsPathByPackageInfo, findManifestFile, readManifestFile} from './ip
 import Store from './ippm-node/store';
 import * as fs from 'fs';
 import * as path from 'path';
-import {patch as _patch} from './ippm-node/patch';
 
 const rootPackagePath = findManifestFile(path.dirname(module.parent.filename));
 
@@ -77,7 +76,9 @@ function resolveFilename(request, parent) {
 }
 
 export function patch() {
-	return _patch(resolveFilename);
+	module.constructor._resolveFilename = resolveFilename;
 }
 
-export {unpatch} from './ippm-node/patch';
+export function unpatch() {
+	module.constructor._resolveFilename = origResolveFilename;
+}
