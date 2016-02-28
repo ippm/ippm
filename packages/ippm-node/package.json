@@ -6,12 +6,12 @@
   "main:production": "ippm-node.min.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ippm/ippm-node.git"
+    "url": "git+https://github.com/ippm/ippm.git"
   },
   "bugs": {
-    "url": "https://github.com/ippm/ippm-node/issues"
+    "url": "https://github.com/ippm/ippm/issues"
   },
-  "homepage": "https://github.com/ippm/ippm-node",
+  "homepage": "https://github.com/ippm/ippm",
   "dependencies": {
     "babel-runtime": "^6.5.0",
     "core-js": "^2.1.0"
