@@ -24,7 +24,6 @@ gulp.task('build', () =>
 		.pipe($.rollup({
 			format: 'cjs',
 			sourceMap: true,
-			external: ['babel-runtime'],
 			plugins: [
 				$.rollupBabel({
 					babelrc: false,
