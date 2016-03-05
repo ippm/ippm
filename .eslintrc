@@ -1,6 +1,2 @@
 extends: sudeti
-rules:
-  max-len:
-    - 1
-    - 100
-    - 2
+parser: babel-eslint
