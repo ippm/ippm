@@ -1,5 +1,8 @@
 /node_modules/
 
 /packages/*/*
+!/packages/*/Dockerfile
 !/packages/*/package.json
 !/packages/*/README.md
+
+/infrastructure/data-*/

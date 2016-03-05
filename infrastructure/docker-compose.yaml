@@ -1,0 +1,14 @@
+version: "2"
+services:
+  couchdb:
+    image: klaemo/couchdb:1
+    volumes:
+      - "./data-couchdb:/usr/local/var/lib/couchdb"
+    ports:
+      - "5984:5984"
+
+  ippm-adder:
+    build: ../packages/ippm-adder
+    volumes:
+      - "./data-ippm-adder:/data/ippm-adder"
+      - "/tmp/ippm-adder:/tmp/ippm-adder"

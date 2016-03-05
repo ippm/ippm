@@ -29,7 +29,11 @@ gulp.task('build', () =>
 				$.rollupBabel({
 					babelrc: false,
 					presets: ['es2015-rollup'],
-					plugins: ['transform-runtime', 'transform-function-bind'],
+					plugins: [
+						'transform-runtime',
+						'transform-function-bind',
+						'transform-async-to-generator',
+					],
 					runtimeHelpers: true,
 				}),
 			],
