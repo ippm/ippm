@@ -139,6 +139,7 @@ async function processPackage(pak) {
 				fmode: 0o444,
 				map(header) {
 					// replace 'package/' with `${nameVer}/`;
+					// eslint-disable-next-line no-param-reassign
 					header.name = `${pak.nameVer}/${header.name.substring(8)}`;
 					return header;
 				},
@@ -233,6 +234,7 @@ asyncMain(async () => {
 			state.failedQueue = [];
 
 			for (const changedPackagesChunk of changedPackages) {
+				// eslint-disable-next-line array-callback-return
 				await Promise.all(changedPackagesChunk.map(async (pak) => {
 					try {
 						const ipfsId = await processPackage(pak);
@@ -241,6 +243,7 @@ asyncMain(async () => {
 							await logAdd(pak);
 						}
 					} catch (e) {
+						// eslint-disable-next-line no-param-reassign
 						pak.numberFails += 1;
 
 						await logError(`${pak.nameVer}: exception (#${pak.numberFails}): ${e}`);

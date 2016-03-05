@@ -8,13 +8,16 @@ export default class Store {
 		this._packagesByName = Object.create(null);
 		this._packages = [];
 
+		// eslint-disable-next-line no-param-reassign
 		rootPak.name = '';
 		this.add(rootPak);
 	}
 
 	add(pak) {
+		/* eslint-disable no-param-reassign */
 		pak.path = path.normalize(pak.path);
 		pak.searchPath = `${pak.path}/`;
+		/* eslint-enable no-param-reassign */
 
 		this._packages.push(pak);
 		this._packagesByName[pak.name] = pak;

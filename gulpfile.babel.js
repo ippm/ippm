@@ -39,6 +39,7 @@ gulp.task('build', () =>
 			],
 		}))
 		.pipe($.rename(p => {
+			// eslint-disable-next-line no-param-reassign
 			p.dirname += `/${p.basename}`;
 		}))
 		.pipe($.sourcemaps.write('./'))
