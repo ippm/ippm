@@ -98,7 +98,7 @@ async function versionExists({name, version}) {
 
 async function processPackage(pak) {
 	if (await versionExists(pak)) {
-		return;
+		return undefined;
 	}
 
 	const pakPath = `${tmpPath}/${pak.nameVer}`;
@@ -151,9 +151,9 @@ async function processPackage(pak) {
 		const ipfsRes = await ipfs.add(pakPath, {recursive: true});
 		const ipfsId = ipfsRes[ipfsRes.length - 1].Hash;
 
-		pak.ipfsId = ipfsId;
-
 		await writePakId(pak, ipfsId);
+
+		return ipfsId;
 	} finally {
 		await del(pakPath, {force: true});
 	}
@@ -235,10 +235,9 @@ asyncMain(async () => {
 			for (const changedPackagesChunk of changedPackages) {
 				await Promise.all(changedPackagesChunk.map(async (pak) => {
 					try {
-						await processPackage(pak);
+						const ipfsId = await processPackage(pak);
 
-						// ignore skipped
-						if (pak.ipfsId) {
+						if (ipfsId) {
 							await logAdd(pak);
 						}
 					} catch (e) {
