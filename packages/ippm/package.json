@@ -1,0 +1,21 @@
+{
+  "name": "ippm",
+  "version": "0.0.0",
+  "description": "InterPlanetary Package Manager",
+  "main": "ippm.js",
+  "main:production": "ippm.min.js",
+  "bin": "ippm.min.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ippm/ippm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ippm/ippm/issues"
+  },
+  "homepage": "https://github.com/ippm/ippm",
+  "dependencies": {
+    "babel-runtime": "^6.5.0",
+    "core-js": "^2.1.0",
+    "source-map-support": "^0.4.0"
+  }
+}
