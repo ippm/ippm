@@ -1,9 +1,9 @@
+/* eslint-disable no-console, no-loop-func */
 import {
 	toAsync,
 	asyncMain,
 	callNodeAsync as cAsync,
 	fs,
-	sleep,
 } from 'js-utils';
 import {get as httpGet} from 'http';
 import {Connection as DBConn} from 'cradle';
@@ -11,7 +11,7 @@ import {extract as tarExtract} from 'tar-fs';
 import gunzipMaybe from 'gunzip-maybe';
 import digestStream from 'digest-stream';
 import del from 'del';
-import IpfsApi from 'ipfs-api';
+import ipfsApi from 'ipfs-api';
 import crypto from 'crypto';
 import _mkdirp from 'mkdirp';
 import semver from 'semver';
@@ -22,7 +22,7 @@ const REPO_LOCK = new RWLock();
 
 const mkdirp = toAsync(_mkdirp);
 
-const ipfs = IpfsApi({host: 'localhost', port: '5001', procotol: 'http'});
+const ipfs = ipfsApi({host: 'localhost', port: '5001', procotol: 'http'});
 // const db = new DBConn('http://couchdb', 5984).database('npm');
 const db = new DBConn('http://127.0.0.1', 5984, {}).database('npm');
 const dataPath = './ws';
@@ -177,7 +177,7 @@ asyncMain(async () => {
 
 	let dbFails = 0;
 
-	for(;;) {
+	for (;;) {
 		try {
 			await del(tmpPath, {force: true});
 
@@ -240,7 +240,7 @@ asyncMain(async () => {
 						if (pak.ipfsId) {
 							await logAdd(pak);
 						}
-					} catch(e) {
+					} catch (e) {
 						pak.numberFails += 1;
 
 						await logError(`${pak.nameVer}: exception (#${pak.numberFails}): ${e}`);
