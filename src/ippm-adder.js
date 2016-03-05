@@ -1,4 +1,5 @@
 /* eslint-disable no-console, no-loop-func */
+import 'source-map-support/register';
 import {
 	toAsync,
 	asyncMain,
