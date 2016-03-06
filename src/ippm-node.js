@@ -1,5 +1,6 @@
 import startsWith from 'core-js/library/fn/string/virtual/starts-with';
-import {getIpfsPathByPackageInfo, findManifestFile, readManifestFile} from './ippm-node/utils';
+import {getIpfsPathByPackageInfo} from './ippm-node/utils';
+import {findManifestFile, readManifestFile} from './libs/utils';
 import Store from './ippm-node/store';
 import * as fs from 'fs';
 import * as path from 'path';
