@@ -4,7 +4,7 @@
   "description": "InterPlanetary Package Manager",
   "main": "ippm.js",
   "main:production": "ippm.min.js",
-  "bin": "ippm.min.js",
+  "bin": "ippm.bin.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ippm/ippm.git"
