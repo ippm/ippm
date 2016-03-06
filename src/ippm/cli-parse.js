@@ -1,6 +1,8 @@
 export default function cliParse() {
+	const rootArgs = process.argv.slice(2);
+
 	return {
-		cmd: 'install',
+		cmd: rootArgs[0],
 		options: {},
 	};
 }
