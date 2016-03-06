@@ -1,6 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+export function objectValues() {
+	return Object.keys(this).map(k => this[k]);
+}
+
+export function objectIter() {
+	return Object.keys(this).map(k => [k, this[k]]);
+}
+
 export function findDirWithFile(startDir, filename) {
 	let dir = startDir;
 	for (;;) {
