@@ -1,12 +1,30 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export function objectValues() {
-	return Object.keys(this).map(k => this[k]);
+const objHasOwnProperty = Object.prototype.hasOwnProperty;
+
+export function* objectValueIter() {
+	for (const key in this) {
+		if (this::objHasOwnProperty(key)) {
+			yield this[key];
+		}
+	}
 }
 
-export function objectIter() {
-	return Object.keys(this).map(k => [k, this[k]]);
+export function* objectKeyIter() {
+	for (const key in this) {
+		if (this::objHasOwnProperty(key)) {
+			yield key;
+		}
+	}
+}
+
+export function* objectIter() {
+	for (const key in this) {
+		if (this::objHasOwnProperty(key)) {
+			yield [key, this[key]];
+		}
+	}
 }
 
 export function findDirWithFile(startDir, filename) {
