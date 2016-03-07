@@ -15,23 +15,14 @@ export const ALIASES = qwm(`
 	up update
 `);
 
+export const CMD_BY_NAME = {
+	install,
+	list,
+	update,
+};
+
 export async function route(cmdIn, options) {
 	const cmd = (cmdIn in ALIASES ? ALIASES[cmdIn] : cmdIn).toLowerCase();
-
-	switch (cmd) {
-		case 'install':
-			await install(options);
-			break;
-
-		case 'update':
-			await update(options);
-			break;
-
-		case 'list':
-			await list(options);
-			break;
-
-		default:
-			await usage(options);
-	}
+	const cmdFunc = cmd in CMD_BY_NAME ? CMD_BY_NAME[cmd] : usage;
+	await cmdFunc(options);
 }
