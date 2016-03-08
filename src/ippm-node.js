@@ -2,19 +2,25 @@ import startsWith from 'core-js/library/fn/string/virtual/starts-with';
 import {getIpfsPathByPackageInfo} from './ippm-node/utils';
 import {findManifestFile, readManifestFile} from './libs/utils';
 import Store from './ippm-node/store';
-import * as fs from 'fs';
+import {statSync} from 'fs';
 import * as path from 'path';
-
-const rootPackagePath = findManifestFile(path.dirname(module.parent.filename));
-
-const store = new Store({
-	path: rootPackagePath,
-});
-
-const manifest = readManifestFile(rootPackagePath);
+import {promise as deasync} from 'deasync';
 
 const origResolveFilename = module.constructor._resolveFilename;
 const natives = process.binding('natives');
+let manifest;
+let store;
+
+async function main() {
+	const pakPath = await findManifestFile(path.dirname(module.parent.filename));
+	manifest = await readManifestFile(pakPath);
+
+	store = new Store({
+		path: pakPath,
+	});
+}
+
+deasync(main)();
 
 function resolveFilename(request, parent) {
 	if (request in natives) {
@@ -58,7 +64,7 @@ function resolveFilename(request, parent) {
 	let reqPathNorm = path.join(pakPath, reqPath || pakInfo.main);
 
 	try {
-		if (fs.statSync(reqPathNorm).isDirectory()) {
+		if (statSync(reqPathNorm).isDirectory()) {
 			reqPathNorm = path.join(reqPathNorm, 'index.js');
 		}
 	} catch (e) {

@@ -8,9 +8,9 @@ import {fgGreen, fgBlue, reset} from '../../libs/colors';
 
 /* eslint-disable no-console */
 
-export default function list() {
-	const projectPath = findManifestFile(process.cwd());
-	const manifest = readManifestFile(projectPath);
+export default async function list() {
+	const projectPath = await findManifestFile(process.cwd());
+	const manifest = await readManifestFile(projectPath);
 
 	[...manifest.packages::objectValueIter()]
 		.sort((a, b) => {

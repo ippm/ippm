@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import {readFile, access, R_OK} from 'js-utils-fs';
 import * as path from 'path';
 
 const objHasOwnProperty = Object.prototype.hasOwnProperty;
@@ -27,11 +27,11 @@ export function* objectIter() {
 	}
 }
 
-export function findDirWithFile(startDir, filename) {
+export async function findDirWithFile(startDir, filename) {
 	let dir = startDir;
 	for (;;) {
 		try {
-			fs.accessSync(`${dir}/${filename}`, fs.R_OK);
+			await access(`${dir}/${filename}`, R_OK);
 		} catch (e) {
 			if (!('code' in e) || e.code !== 'ENOENT') {
 				throw e;
@@ -51,16 +51,16 @@ export function findDirWithFile(startDir, filename) {
 }
 export const MANIFEST_FILENAME = 'ippm.lock';
 
-export function findManifestFile(dir) {
-	const rootPackagePath = findDirWithFile(dir, MANIFEST_FILENAME);
+export async function findManifestFile(dir) {
+	const rootPackagePath = await findDirWithFile(dir, MANIFEST_FILENAME);
 	if (!rootPackagePath) {
 		throw new Error(`unable to find the manifest file "${MANIFEST_FILENAME}"`);
 	}
 	return rootPackagePath;
 }
 
-export function readManifestFile(dir) {
-	const fileContent = fs.readFileSync(`${dir}/${MANIFEST_FILENAME}`, 'utf8');
+export async function readManifestFile(dir) {
+	const fileContent = await readFile(`${dir}/${MANIFEST_FILENAME}`, 'utf8');
 	const manifest = JSON.parse(fileContent);
 
 	Object.keys(manifest.packages || {}).forEach(k => {
