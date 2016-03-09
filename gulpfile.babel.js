@@ -1,5 +1,6 @@
 import gulp from 'gulp';
 import lazyReq from 'lazyreq';
+import {qw} from 'js-utils';
 
 const $ = lazyReq(require, {
 	cached: 'gulp-cached',
@@ -16,50 +17,58 @@ const $ = lazyReq(require, {
 	isparta: 'isparta',
 	rollup: 'gulp-rollup',
 	rollupBabel: ['rollup-plugin-babel'],
-	filter: 'gulp-filter',
 });
 
-gulp.task('build', () =>
-	gulp.src('./src/*.js', {read: false})
-		.pipe($.rollup({
-			format: 'cjs',
-			sourceMap: true,
-			plugins: [
-				$.rollupBabel({
-					babelrc: false,
-					presets: ['es2015-rollup'],
-					plugins: [
-						'transform-runtime',
-						'transform-function-bind',
-						'transform-async-to-generator',
-					],
-					runtimeHelpers: true,
-				}),
-			],
-		}))
-		.pipe($.rename(p => {
-			// eslint-disable-next-line no-param-reassign
-			p.dirname += `/${p.basename}`;
-		}))
-		.pipe($.sourcemaps.write('./'))
-		.pipe(gulp.dest('packages'))
-		.pipe($.filter(['**/*.js']))
-		.pipe($.env.set({
-			NODE_ENV: 'production',
-		}))
-		.pipe($.babel({
-			babelrc: false,
-			plugins: ['transform-inline-environment-variables'],
-		}))
-		.pipe($.uglify({
-			mangle: {
-				toplevel: true,
-			},
-		}))
-		.pipe($.rename({suffix: '.min'}))
-		.pipe($.sourcemaps.write('./'))
-		.pipe(gulp.dest('packages'))
-);
+const PACKAGES = qw('ippm ippm-node ippm-adder');
+
+gulp.task('build', PACKAGES.map(p => `build-${p}`));
+gulp.task('build-min', PACKAGES.map(p => `build-min-${p}`));
+
+PACKAGES.forEach(pakName => {
+	// mk build-*
+	gulp.task(`build-${pakName}`, () =>
+		gulp.src(`./src/${pakName}.js`, {read: false})
+			.pipe($.rollup({
+				format: 'cjs',
+				sourceMap: true,
+				plugins: [
+					$.rollupBabel({
+						babelrc: false,
+						presets: ['es2015-rollup'],
+						plugins: [
+							'transform-runtime',
+							'transform-function-bind',
+							'transform-async-to-generator',
+						],
+						runtimeHelpers: true,
+					}),
+				],
+			}))
+			.pipe($.sourcemaps.write('./'))
+			.pipe(gulp.dest(`./packages/${pakName}`))
+	);
+
+	// mk build-min-*
+	gulp.task(`build-min-${pakName}`, [`build-${pakName}`], () =>
+		gulp.src(`./packages/${pakName}/${pakName}.js`)
+			.pipe($.sourcemaps.init({loadMaps: true}))
+			.pipe($.env.set({
+				NODE_ENV: 'production',
+			}))
+			.pipe($.babel({
+				babelrc: false,
+				plugins: ['transform-inline-environment-variables'],
+			}))
+			.pipe($.uglify({
+				mangle: {
+					toplevel: true,
+				},
+			}))
+			.pipe($.rename({suffix: '.min'}))
+			.pipe($.sourcemaps.write('./'))
+			.pipe(gulp.dest(`./packages/${pakName}`))
+	);
+});
 
 gulp.task('lint', () =>
 	gulp.src(['./src/**/*.js', './gulpfile.babel.js', './test/**/*.js'])
