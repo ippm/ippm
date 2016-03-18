@@ -32,9 +32,7 @@ async function readState() {
 	try {
 		return JSON.parse(await fs.readFile(`${dataPath}/state.json`, 'utf-8'));
 	} catch (e) {
-		if (!('code' in e) || e.code !== 'ENOENT') {
-			throw e;
-		}
+		if (e.code !== 'ENOENT') throw e;
 	}
 
 	return {last_seq: 0, failedQueue: []};
@@ -57,15 +55,10 @@ async function writePakId({name, version}, ipfsId) {
 		try {
 			content = JSON.parse(await fs.readFile(filePath, 'utf-8'));
 		} catch (e) {
-			if (!('code' in e) || e.code !== 'ENOENT') {
-				throw e;
-			}
+			if (e.code !== 'ENOENT') throw e;
 		}
 
-		content.versions.push({
-			version,
-			ipfs: ipfsId,
-		});
+		content.versions.push({version, ipfs: ipfsId});
 
 		content.versions = content.versions
 			.filter((e1, i, arr) => i === arr.findIndex(e2 => e1.version === e2.version))
@@ -86,9 +79,8 @@ async function versionExists({name, version}) {
 		const content = JSON.parse(await fs.readFile(filePath, 'utf-8'));
 		return content.versions.some(e => e.version === version);
 	} catch (e) {
-		if ('code' in e && e.code === 'ENOENT') {
-			return false;
-		}
+		if (e.code === 'ENOENT') return false;
+
 		throw e;
 	} finally {
 		releaseLock();
@@ -96,9 +88,7 @@ async function versionExists({name, version}) {
 }
 
 async function processPackage(pak) {
-	if (await versionExists(pak)) {
-		return undefined;
-	}
+	if (await versionExists(pak)) return undefined;
 
 	const pakPath = `${tmpPath}/${pak.nameVer}`;
 
@@ -166,14 +156,14 @@ asyncMain(async () => {
 	const errorLogStream = fs.createWriteStream(`${dataPath}/errorlog`, {flags: 'a'});
 	function logError(msg) {
 		console.log(` ### ${msg}`);
-		return new Promise(resolve => errorLogStream.write(`${msg}\n`, 'utf-8', () => resolve()));
+		return errorLogStream::cAsync('write', `${msg}\n`, 'utf-8');
 	}
 
 	const addLogStream = fs.createWriteStream(`${dataPath}/addlog`, {flags: 'a'});
 	function logAdd(pak, ipfsId) {
 		console.log(` + ${pak.nameVer}: ${ipfsId}`);
 		const logString = JSON.stringify({name: pak.nameVer, ipfs: ipfsId});
-		return new Promise(resolve => addLogStream.write(`${logString}\n`, 'utf-8', () => resolve()));
+		return addLogStream::cAsync('write', `${logString}\n`, 'utf-8');
 	}
 
 	let dbFails = 0;
@@ -223,9 +213,8 @@ asyncMain(async () => {
 				})
 				.concat(state.failedQueue)
 				.reduce((chunks, pak) => {
-					if (5 <= chunks[chunks.length - 1].length) {
-						chunks.push([]);
-					}
+					if (5 <= chunks[chunks.length - 1].length) chunks.push([]);
+
 					chunks[chunks.length - 1].push(pak);
 					return chunks;
 				}, [[]]);
@@ -237,20 +226,15 @@ asyncMain(async () => {
 				await Promise.all(changedPackagesChunk.map(async (pak) => {
 					try {
 						const ipfsId = await processPackage(pak);
-						if (ipfsId) {
-							await logAdd(pak, ipfsId);
-						}
+						if (ipfsId) await logAdd(pak, ipfsId);
 					} catch (e) {
 						// eslint-disable-next-line no-param-reassign
 						pak.numberFails += 1;
 
 						await logError(`${pak.nameVer}: exception (#${pak.numberFails}): ${e}`);
 
-						if (pak.numberFails < 10) {
-							state.failedQueue.push(pak);
-						} else {
-							await logError(`${pak.nameVer}: skipped`);
-						}
+						if (pak.numberFails < 10) state.failedQueue.push(pak);
+						else await logError(`${pak.nameVer}: skipped`);
 					}
 				}));
 			}

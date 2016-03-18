@@ -5,25 +5,25 @@ const objHasOwnProperty = Object.prototype.hasOwnProperty;
 
 export function* objectValueIter() {
 	for (const key in this) {
-		if (this::objHasOwnProperty(key)) {
-			yield this[key];
-		}
+		if (!this::objHasOwnProperty(key)) continue;
+
+		yield this[key];
 	}
 }
 
 export function* objectKeyIter() {
 	for (const key in this) {
-		if (this::objHasOwnProperty(key)) {
-			yield key;
-		}
+		if (!this::objHasOwnProperty(key)) continue;
+
+		yield key;
 	}
 }
 
 export function* objectIter() {
 	for (const key in this) {
-		if (this::objHasOwnProperty(key)) {
-			yield [key, this[key]];
-		}
+		if (!this::objHasOwnProperty(key)) continue;
+
+		yield [key, this[key]];
 	}
 }
 
@@ -33,15 +33,12 @@ export async function findDirWithFile(startDir, filename) {
 		try {
 			await access(`${dir}/${filename}`, R_OK);
 		} catch (e) {
-			if (!('code' in e) || e.code !== 'ENOENT') {
-				throw e;
-			}
+			if (e.code !== 'ENOENT') throw e;
 
 			const prevDir = dir;
 			dir = path.dirname(dir);
-			if (dir === prevDir) {
-				return null;
-			}
+
+			if (dir === prevDir) return null;
 
 			continue;
 		}
@@ -53,9 +50,8 @@ export const MANIFEST_FILENAME = 'ippm.lock';
 
 export async function findManifestFile(dir) {
 	const rootPackagePath = await findDirWithFile(dir, MANIFEST_FILENAME);
-	if (!rootPackagePath) {
-		throw new Error(`unable to find the manifest file "${MANIFEST_FILENAME}"`);
-	}
+	if (!rootPackagePath) throw new Error(`unable to find the manifest file "${MANIFEST_FILENAME}"`);
+
 	return rootPackagePath;
 }
 

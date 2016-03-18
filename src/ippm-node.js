@@ -23,9 +23,7 @@ async function main() {
 deasync(main)();
 
 function resolveFilename(request, parent) {
-	if (request in natives) {
-		return request;
-	}
+	if (request in natives) return request;
 
 	const parentPackage = store.getByFilePath(parent.filename);
 
@@ -34,9 +32,7 @@ function resolveFilename(request, parent) {
 		|| request::startsWith('./') || request::startsWith('..') // local relative
 		|| path.isAbsolute(request); // absolute
 
-	if (redirectToOrig) {
-		return origResolveFilename(request, parent);
-	}
+	if (redirectToOrig) return origResolveFilename(request, parent);
 
 	const reqParts = request.match(/^([^\/]*)(?:\/(.+))?$/);
 	const reqId = reqParts[1];
@@ -64,13 +60,9 @@ function resolveFilename(request, parent) {
 	let reqPathNorm = path.join(pakPath, reqPath || pakInfo.main);
 
 	try {
-		if (statSync(reqPathNorm).isDirectory()) {
-			reqPathNorm = path.join(reqPathNorm, 'index.js');
-		}
+		if (statSync(reqPathNorm).isDirectory()) reqPathNorm = path.join(reqPathNorm, 'index.js');
 	} catch (e) {
-		if (!('code' in e) || e.code !== 'ENOENT') {
-			throw e;
-		}
+		if (e.code !== 'ENOENT') throw e;
 	}
 
 	if (path.extname(reqPathNorm).length === 0) {

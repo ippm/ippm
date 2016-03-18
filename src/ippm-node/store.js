@@ -28,9 +28,7 @@ export default class Store {
 	getByFilePath(filePath) {
 		const filePathNorm = path.normalize(filePath);
 
-		if (filePathNorm.indexOf('/node_modules/') !== -1) {
-			return undefined;
-		}
+		if (filePathNorm.indexOf('/node_modules/') !== -1) return undefined;
 
 		return this._packages::find(pak => filePathNorm::startsWith(pak.searchPath));
 	}
