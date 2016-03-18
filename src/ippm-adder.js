@@ -1,5 +1,4 @@
 /* eslint-disable no-console, no-loop-func */
-import 'source-map-support/register';
 import {
 	toAsync,
 	asyncMain,
@@ -238,7 +237,6 @@ asyncMain(async () => {
 				await Promise.all(changedPackagesChunk.map(async (pak) => {
 					try {
 						const ipfsId = await processPackage(pak);
-
 						if (ipfsId) {
 							await logAdd(pak);
 						}
