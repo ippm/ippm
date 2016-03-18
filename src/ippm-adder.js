@@ -170,9 +170,9 @@ asyncMain(async () => {
 	}
 
 	const addLogStream = fs.createWriteStream(`${dataPath}/addlog`, {flags: 'a'});
-	function logAdd(pak) {
-		console.log(` + ${pak.nameVer}: ${pak.ipfsId}`);
-		const logString = JSON.stringify({name: pak.nameVer, ipfs: pak.ipfsId});
+	function logAdd(pak, ipfsId) {
+		console.log(` + ${pak.nameVer}: ${ipfsId}`);
+		const logString = JSON.stringify({name: pak.nameVer, ipfs: ipfsId});
 		return new Promise(resolve => addLogStream.write(`${logString}\n`, 'utf-8', () => resolve()));
 	}
 
@@ -238,7 +238,7 @@ asyncMain(async () => {
 					try {
 						const ipfsId = await processPackage(pak);
 						if (ipfsId) {
-							await logAdd(pak);
+							await logAdd(pak, ipfsId);
 						}
 					} catch (e) {
 						// eslint-disable-next-line no-param-reassign
