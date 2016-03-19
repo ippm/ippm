@@ -1,6 +1,7 @@
 /node_modules/
 
 /packages/*/*
+!/packages/ippm/ippm.bin.js
 !/packages/*/Dockerfile
 !/packages/*/package.json
 !/packages/*/README.md
