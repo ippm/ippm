@@ -1,6 +1,6 @@
 import gulp from 'gulp';
 import lazyReq from 'lazyreq';
-import {qw} from 'js-utils';
+import {qw, toAsync} from 'js-utils';
 
 const $ = lazyReq(require, {
 	cached: 'gulp-cached',
@@ -17,6 +17,7 @@ const $ = lazyReq(require, {
 	isparta: 'isparta',
 	rollup: 'gulp-rollup',
 	rollupBabel: ['rollup-plugin-babel'],
+	exec: ['child_process', 'exec', toAsync],
 });
 
 const PACKAGES = qw('ippm ippm-node ippm-adder');
@@ -96,13 +97,7 @@ gulp.task('test', (cb) => {
 		});
 });
 
-gulp.task('clean', () =>
-	$.del([
-		'./packages/*/**',
-		'!./packages/*/{,package.json,README.md}',
-		'./coverage',
-	])
-);
+gulp.task('clean', () => $.exec('git clean -xf'));
 
 gulp.task('default', (cb) => {
 	$.runSequence(
