@@ -7,16 +7,18 @@ import {
 } from 'js-utils';
 import {get as httpGet} from 'http';
 import {Connection as DBConn} from 'cradle';
-import {extract as tarExtract} from 'tar-fs';
+import {extract as tarExtract} from 'tar-vinyl-stream';
 import gunzipMaybe from 'gunzip-maybe';
 import digestStream from 'digest-stream';
-import del from 'del';
 import ipfsApi from 'ipfs-api';
 import crypto from 'crypto';
 import _mkdirp from 'mkdirp';
 import semver from 'semver';
 import RWLock from 'rwlock';
 import pump from 'pump';
+import gulpRename from 'gulp-rename';
+import streamFilter from 'through2-filter';
+import streamSpy from 'through2-spy';
 
 const REPO_LOCK = new RWLock();
 
@@ -26,7 +28,6 @@ const ipfs = ipfsApi({host: 'localhost', port: '5001', procotol: 'http'});
 // const db = new DBConn('http://couchdb', 5984).database('npm');
 const db = new DBConn('http://127.0.0.1', 5984, {}).database('npm');
 const dataPath = './ws';
-const tmpPath = '/tmp/ippm-adder';
 
 async function readState() {
 	try {
@@ -90,63 +91,55 @@ async function versionExists({name, version}) {
 async function processPackage(pak) {
 	if (await versionExists(pak)) return undefined;
 
-	const pakPath = `${tmpPath}/${pak.nameVer}`;
+	const tarRes = await new Promise(resolve => httpGet(pak.tarUrl, resolve));
 
-	await del(pakPath, {force: true});
-
-	try {
-		const tarRes = await new Promise(resolve => httpGet(pak.tarUrl, resolve));
-
-		if (tarRes.statusCode !== 200) {
-			if (tarRes.headers['content-type'] === 'application/json') {
-				await new Promise((_, reject) => {
-					let msgData = '';
-					tarRes
-						.on('error', reject)
-						.on('data', chunk => {
-							msgData += chunk;
-						})
-						.on('end', () => {
-							const msg = JSON.parse(msgData);
-							reject(new Error(`${msg.error || tarRes.statusMessage} "${pak.tarUrl}"`));
-						});
-				});
-			} else {
-				tarRes.abort();
-				throw new Error(`${tarRes.statusMessage} "${pak.tarUrl}"`);
-			}
+	if (tarRes.statusCode !== 200) {
+		if (tarRes.headers['content-type'] === 'application/json') {
+			await new Promise((_, reject) => {
+				let msgData = '';
+				tarRes
+					.on('error', reject)
+					.on('data', chunk => {
+						msgData += chunk;
+					})
+					.on('end', () => {
+						const msg = JSON.parse(msgData);
+						reject(new Error(`${msg.error || tarRes.statusMessage} "${pak.tarUrl}"`));
+					});
+			});
+		} else {
+			tarRes.abort();
+			throw new Error(`${tarRes.statusMessage} "${pak.tarUrl}"`);
 		}
-
-		await cAsync(pump,
-			tarRes,
-			digestStream('sha1', 'hex', shasum =>
-				pak.shasum !== shasum ? new Error(`shasum mismatch "${pak.tarUrl}"`) : undefined
-			),
-			gunzipMaybe(),
-			tarExtract(pakPath, {
-				dmode: 0o555,
-				fmode: 0o444,
-				map(header) {
-					// replace 'package/' with `${nameVer}/`;
-					// eslint-disable-next-line no-param-reassign
-					header.name = `${pak.nameVer}/${header.name.substring(8)}`;
-					return header;
-				},
-				ignore(_, header) {
-					return header.type !== 'directory' && header.type !== 'file';
-				},
-			})
-		);
-
-		const ipfsRes = await ipfs.add(pakPath, {recursive: true});
-		const ipfsId = ipfsRes[ipfsRes.length - 1].Hash;
-
-		await writePakId(pak, ipfsId);
-
-		return ipfsId;
-	} finally {
-		await del(pakPath, {force: true});
 	}
+
+
+	const files = [];
+	await cAsync(pump,
+		tarRes,
+		digestStream('sha1', 'hex', shasum =>
+			pak.shasum !== shasum ? new Error(`shasum mismatch "${pak.tarUrl}"`) : undefined
+		),
+		gunzipMaybe(),
+		tarExtract({buffer: true}),
+		streamFilter.obj(f => f.tarHeader.type === 'file'),
+		gulpRename(f => {
+			// eslint-disable-next-line no-param-reassign
+			f.dirname = `root/${pak.nameVer}/${f.dirname.substring(8)}`;
+		}),
+		streamSpy.obj(v => files.push({
+			path: v.relative,
+			content: v.contents,
+		})),
+		streamFilter.obj(() => false) // eat all files
+	);
+
+	const ipfsRes = await ipfs.add(files, {recursive: true});
+	const ipfsId = ipfsRes[ipfsRes.length - 1].Hash;
+
+	await writePakId(pak, ipfsId);
+
+	return ipfsId;
 }
 
 asyncMain(async () => {
@@ -170,8 +163,6 @@ asyncMain(async () => {
 
 	for (;;) {
 		try {
-			await del(tmpPath, {force: true});
-
 			let changes;
 			try {
 				changes = await db::cAsync('changes', {
@@ -213,7 +204,7 @@ asyncMain(async () => {
 				})
 				.concat(state.failedQueue)
 				.reduce((chunks, pak) => {
-					if (5 <= chunks[chunks.length - 1].length) chunks.push([]);
+					if (10 <= chunks[chunks.length - 1].length) chunks.push([]);
 
 					chunks[chunks.length - 1].push(pak);
 					return chunks;
