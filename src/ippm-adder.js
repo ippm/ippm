@@ -91,7 +91,9 @@ async function versionExists({name, version}) {
 async function processPackage(pak) {
 	if (await versionExists(pak)) return undefined;
 
-	const tarRes = await new Promise(resolve => httpGet(pak.tarUrl, resolve));
+	const tarRes = await new Promise((resolve, reject) =>
+		httpGet(pak.tarUrl, resolve).on('error', reject)
+	);
 
 	if (tarRes.statusCode !== 200) {
 		if (tarRes.headers['content-type'] === 'application/json') {
