@@ -21,6 +21,7 @@ import streamFilter from 'through2-filter';
 import streamSpy from 'through2-spy';
 
 const REPO_LOCK = new RWLock();
+const IPFS_LOCK = new RWLock();
 
 const mkdirp = toAsync(_mkdirp);
 
@@ -136,8 +137,14 @@ async function processPackage(pak) {
 		streamFilter.obj(() => false) // eat all files
 	);
 
-	const ipfsRes = await ipfs.add(files, {recursive: true});
-	const ipfsId = ipfsRes[ipfsRes.length - 1].Hash;
+	const releaseLock = await new Promise(resolve => IPFS_LOCK.writeLock(resolve));
+	let ipfsId;
+	try {
+		const ipfsRes = await ipfs.add(files, {recursive: true});
+		ipfsId = ipfsRes[ipfsRes.length - 1].Hash;
+	} finally {
+		releaseLock();
+	}
 
 	await writePakId(pak, ipfsId);
 
