@@ -3,8 +3,8 @@ import {
 	toAsync,
 	asyncMain,
 	callNodeAsync as cAsync,
-	fs,
 } from 'js-utils';
+import * as fs from 'js-utils-fs';
 import {get as httpGet} from 'http';
 import {Connection as DBConn} from 'cradle';
 import {extract as tarExtract} from 'tar-vinyl-stream';

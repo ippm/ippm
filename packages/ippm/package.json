@@ -17,7 +17,8 @@
     "babel-runtime": "^6.5.0",
     "core-js": "^2.1.0",
     "deasync": "^0.1.4",
-    "js-utils": "^2.0.0-beta",
+    "js-utils": "^2.0.0",
+    "js-utils-fs": "^2.0.0",
     "source-map-support": "^0.4.0"
   }
 }
