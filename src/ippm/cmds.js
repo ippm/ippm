@@ -22,7 +22,8 @@ export const CMD_BY_NAME = {
 };
 
 export async function route(cmdIn, options) {
-	const cmd = (cmdIn in ALIASES ? ALIASES[cmdIn] : cmdIn).toLowerCase();
+	const cmdLc = cmdIn.toLowerCase();
+	const cmd = cmdLc in ALIASES ? ALIASES[cmdLc] : cmdLc;
 	const cmdFunc = cmd in CMD_BY_NAME ? CMD_BY_NAME[cmd] : usage;
 	await cmdFunc(options);
 }
