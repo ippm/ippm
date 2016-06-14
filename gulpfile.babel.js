@@ -20,7 +20,7 @@ const $ = lazyReq(require, {
 	exec: ['child_process', 'exec', toAsync],
 });
 
-const PACKAGES = qw('ippm ippm-node ippm-adder');
+const PACKAGES = qw('ippm ippm-node ippm-adder ippm-systemjs');
 
 gulp.task('build', PACKAGES.map(p => `build-${p}`));
 gulp.task('build-min', PACKAGES.map(p => `build-min-${p}`));
@@ -31,6 +31,7 @@ PACKAGES.forEach(pakName => {
 		gulp.src(`./src/${pakName}.js`, {read: false})
 			.pipe($.rollup({
 				format: 'cjs',
+				exports: 'named',
 				sourceMap: true,
 				plugins: [
 					$.rollupBabel({
@@ -40,6 +41,7 @@ PACKAGES.forEach(pakName => {
 							'transform-runtime',
 							'transform-function-bind',
 							'transform-async-to-generator',
+							'transform-class-properties',
 						],
 						runtimeHelpers: true,
 					}),
