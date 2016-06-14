@@ -1,0 +1,20 @@
+{
+  "name": "ippm-systemjs",
+  "version": "0.0.0",
+  "description": "InterPlanetary Package Manager",
+  "main": "ippm-systemjs.js",
+  "main:production": "ippm-systemjs.min.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ippm/ippm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ippm/ippm/issues"
+  },
+  "homepage": "https://github.com/ippm/ippm",
+  "dependencies": {
+    "babel-runtime": "^6.9.2",
+    "core-js": "^2.4.0",
+    "systemjs": "https://github.com/ippm/systemjs.git"
+  }
+}
