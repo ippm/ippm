@@ -32,6 +32,17 @@ export class IppmSystem extends System {
 		this._ippmPackages.push(['', search.substr(0, search.length - 3)]);
 	}
 
+	config(cfg, ...args) {
+		this._ippmConfig = Object.assign(
+			{
+				baseURL: 'https://ipfs.io/ipfs/',
+			},
+			cfg.ippm
+		);
+
+		return super.config(cfg, ...args);
+	}
+
 	async normalize(name, parentName, skipExt) {
 		const nameMatch = name.match(NAME_REGEX);
 		const orig = super.normalize.bind(this, name, parentName, skipExt);
@@ -49,7 +60,7 @@ export class IppmSystem extends System {
 
 		const nameVer = `${nameMatch[1]}@${deps[nameMatch[1]]}`;
 
-		let ipfsUrl = `http://127.0.0.1:8081/ipfs/${mani.packages[nameVer].ipfs}/${nameVer}/`;
+		let ipfsUrl = `${this._ippmConfig.baseURL}${mani.packages[nameVer].ipfs}/${nameVer}/`;
 
 		const search = await super.normalize(ipfsUrl, parentName, skipExt);
 		if (packs::find(e => e[0] === nameVer) === undefined) {
