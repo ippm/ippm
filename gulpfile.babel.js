@@ -38,9 +38,10 @@ PACKAGES.forEach(pakName => {
 						babelrc: false,
 						presets: ['es2015-rollup'],
 						plugins: [
+							'async-to-promises',
 							'transform-runtime',
 							'transform-function-bind',
-							'transform-async-to-generator',
+							// 'transform-async-to-generator',
 							'transform-class-properties',
 						],
 						runtimeHelpers: true,
