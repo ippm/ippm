@@ -14,6 +14,11 @@ export class IppmSystem extends System {
 
 		this.config({
 			defaultJSExtensions: true,
+			meta: {
+				'*.json': {
+					loader: 'json.js',
+				},
+			},
 		});
 
 		this.registerDynamic('json.js', [], false, () => jsonLoader);
