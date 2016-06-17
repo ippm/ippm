@@ -28,11 +28,11 @@ export class IppmSystem extends System {
 		this._ippmModules.push(['', search.substr(0, search.length - 3)]);
 	}
 
-	async normalize(name, parentName, parentAddr) {
-		console.log('normalize', name, parentName, parentAddr);
+	async normalize(name, parentName, skipExt) {
+		console.log('normalize', name, parentName, skipExt);
 
 		const ippmMatch = name.match(IPPM_REGEX);
-		const orig = super.normalize.bind(this, name, parentName, parentAddr);
+		const orig = super.normalize.bind(this, name, parentName, skipExt);
 
 		if (ippmMatch === null || this._manifest === undefined) return orig();
 
@@ -41,7 +41,8 @@ export class IppmSystem extends System {
 		const mani = this._manifest;
 		const modu = this._ippmModules;
 
-		const parModu = this._findParentModule(parentAddr);
+		const parentNameValidStr = parentName || '';
+		const parModu = this._ippmModules::find(m => parentNameValidStr::startsWith(m[1]));
 
 		console.log('parModu', parModu);
 
@@ -58,7 +59,7 @@ export class IppmSystem extends System {
 		console.log('nameVer', nameVer);
 
 		let ipfsUrl = `http://127.0.0.1:8081/ipfs/${mani.packages[nameVer].ipfs}/${nameVer}`;
-		let search = await super.normalize(ipfsUrl, parentName, parentAddr);
+		let search = await super.normalize(ipfsUrl, parentName, skipExt);
 		search = search.substr(0, search.length - 3);
 
 		console.log('search', search);
@@ -75,14 +76,9 @@ export class IppmSystem extends System {
 
 		if (ippmMatch[3] !== undefined) ipfsUrl += ippmMatch[3];
 
-		return super.normalize(ipfsUrl, parentName, parentAddr);
+		return super.normalize(ipfsUrl, parentName, parentName);
 
 		// if (this._manifest === undefined) throw new Error('IppmSystem not inited');
-	}
-
-	_findParentModule(parentAddr) {
-		if (!parentAddr) parentAddr = ''; // eslint-disable-line no-param-reassign
-		return this._ippmModules::find(m => parentAddr::startsWith(m[1]));
 	}
 }
 
