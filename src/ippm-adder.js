@@ -2,6 +2,7 @@
 import {
 	toAsync,
 	asyncMain,
+	Lock,
 	callNodeAsync as cAsync,
 } from 'js-utils';
 import * as fs from 'js-utils-fs';
@@ -14,14 +15,13 @@ import ipfsApi from 'ipfs-api';
 import crypto from 'crypto';
 import _mkdirp from 'mkdirp';
 import semver from 'semver';
-import RWLock from 'rwlock';
 import pump from 'pump';
 import gulpRename from 'gulp-rename';
 import streamFilter from 'through2-filter';
 import streamSpy from 'through2-spy';
 
-const REPO_LOCK = new RWLock();
-const IPFS_LOCK = new RWLock();
+const REPO_LOCK = new Lock();
+const IPFS_LOCK = new Lock();
 
 const mkdirp = toAsync(_mkdirp);
 
@@ -49,7 +49,7 @@ async function writePakId({name, version}, ipfsId) {
 	const dirPath = `${dataPath}/repo/${nH[0]}/${nH[1]}/${nH[2]}`;
 	const filePath = `${dirPath}/${name}.json`;
 
-	const releaseLock = await new Promise(resolve => REPO_LOCK.writeLock(resolve));
+	const releaseLock = await REPO_LOCK.lock();
 	try {
 		await mkdirp(dirPath);
 
@@ -76,7 +76,7 @@ async function versionExists({name, version}) {
 	const nH = crypto.createHash('md5').update(name).digest('hex');
 	const filePath = `${dataPath}/repo/${nH[0]}/${nH[1]}/${nH[2]}/${name}.json`;
 
-	const releaseLock = await new Promise(resolve => REPO_LOCK.readLock(resolve));
+	const releaseLock = await REPO_LOCK.lock();
 	try {
 		const content = JSON.parse(await fs.readFile(filePath, 'utf-8'));
 		return content.versions.some(e => e.version === version);
@@ -137,7 +137,7 @@ async function processPackage(pak) {
 		streamFilter.obj(() => false) // eat all files
 	);
 
-	const releaseLock = await new Promise(resolve => IPFS_LOCK.writeLock(resolve));
+	const releaseLock = await IPFS_LOCK.lock();
 	let ipfsId;
 	try {
 		const ipfsRes = await ipfs.add(files, {recursive: true});
