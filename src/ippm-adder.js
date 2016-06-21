@@ -22,6 +22,7 @@ import streamSpy from 'through2-spy';
 import endsWith from 'core-js/library/fn/string/virtual/ends-with';
 import Vinyl from 'vinyl';
 import * as path from 'path';
+import {toB58String} from 'multihashes';
 
 const REPO_LOCK = new Lock();
 const IPFS_LOCK = new Lock();
@@ -157,8 +158,8 @@ async function processPackage(pak) {
 	const releaseLock = await IPFS_LOCK.lock();
 	let ipfsId;
 	try {
-		const ipfsRes = await ipfs.add(files, {recursive: true});
-		ipfsId = ipfsRes[ipfsRes.length - 1].Hash;
+		const ipfsRes = await ipfs.files.add(files, {recursive: true});
+		ipfsId = toB58String(ipfsRes[ipfsRes.length - 1].node.multihash());
 	} finally {
 		releaseLock();
 	}
