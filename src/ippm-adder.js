@@ -19,6 +19,9 @@ import pump from 'pump';
 import gulpRename from 'gulp-rename';
 import streamFilter from 'through2-filter';
 import streamSpy from 'through2-spy';
+import endsWith from 'core-js/library/fn/string/virtual/ends-with';
+import Vinyl from 'vinyl';
+import * as path from 'path';
 
 const REPO_LOCK = new Lock();
 const IPFS_LOCK = new Lock();
@@ -26,8 +29,7 @@ const IPFS_LOCK = new Lock();
 const mkdirp = toAsync(_mkdirp);
 
 const ipfs = ipfsApi({host: 'localhost', port: '5001', procotol: 'http'});
-// const db = new DBConn('http://couchdb', 5984).database('npm');
-const db = new DBConn('http://127.0.0.1', 5984, {}).database('npm');
+const db = new DBConn('https://skimdb.npmjs.com', 443, {}).database('registry');
 const dataPath = './ws';
 
 async function readState() {
@@ -129,6 +131,21 @@ async function processPackage(pak) {
 		gulpRename(f => {
 			// eslint-disable-next-line no-param-reassign
 			f.dirname = `root/${pak.nameVer}/${f.dirname.substring(8)}`;
+		}),
+		// eslint-disable-next-line func-names
+		streamSpy.obj(function (v) {
+			if (v.path::endsWith(`/root/${pak.nameVer}/index.js`) || !v.path::endsWith('/index.js')) {
+				return;
+			}
+
+			const parentDirname = v.dirname;
+			const dirname = path.relative(path.dirname(parentDirname), parentDirname);
+			const contents = new Buffer(`exports = require('./${dirname}/index.js');\n`);
+
+			this.push(new Vinyl({
+				path: path.resolve(v.dirname, `../${dirname}.js`),
+				contents,
+			}));
 		}),
 		streamSpy.obj(v => files.push({
 			path: v.relative,
