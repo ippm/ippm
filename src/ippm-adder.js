@@ -135,9 +135,7 @@ async function processPackage(pak) {
 		}),
 		// eslint-disable-next-line func-names
 		streamSpy.obj(function (v) {
-			if (v.path::endsWith(`/root/${pak.nameVer}/index.js`) || !v.path::endsWith('/index.js')) {
-				return;
-			}
+			if (!v.path::endsWith('/index.js')) return;
 
 			const parentDirname = v.dirname;
 			const dirname = path.relative(path.dirname(parentDirname), parentDirname);
