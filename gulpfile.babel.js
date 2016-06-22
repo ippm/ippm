@@ -28,8 +28,10 @@ gulp.task('build-min', PACKAGES.map(p => `build-min-${p}`));
 PACKAGES.forEach(pakName => {
 	// mk build-*
 	gulp.task(`build-${pakName}`, () =>
-		gulp.src(`./src/${pakName}.js`, {read: false})
+		gulp.src('./src/**/*.js')
+			.pipe($.sourcemaps.init())
 			.pipe($.rollup({
+				entry: `./src/${pakName}.js`,
 				format: 'cjs',
 				exports: 'named',
 				sourceMap: true,
