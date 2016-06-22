@@ -127,7 +127,7 @@ async function processPackage(pak) {
 			pak.shasum !== shasum ? new Error(`shasum mismatch "${pak.tarUrl}"`) : undefined
 		),
 		gunzipMaybe(),
-		tarExtract({buffer: true}),
+		tarExtract(),
 		streamFilter.obj(f => f.tarHeader.type === 'file'),
 		gulpRename(f => {
 			// eslint-disable-next-line no-param-reassign

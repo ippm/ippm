@@ -16,7 +16,7 @@ const $ = lazyReq(require, {
 	istanbul: 'gulp-istanbul',
 	isparta: 'isparta',
 	rollupStream: 'rollup-stream',
-	rollupBabel: ['rollup-plugin-babel'],
+	rollupBabel: 'rollup-plugin-babel',
 	vinylSourceBuffer: 'vinyl-source-buffer',
 	exec: ['child_process', 'exec', toAsync],
 });
