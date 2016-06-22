@@ -1,4 +1,4 @@
-FROM node:6-slim
+FROM node:4-slim
 
 COPY package.json gulpfile.babel.js .babelrc src packages /tmp/ippm/
 RUN { set -ex; \
