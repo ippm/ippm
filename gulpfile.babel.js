@@ -15,8 +15,9 @@ const $ = lazyReq(require, {
 	mocha: 'gulp-mocha',
 	istanbul: 'gulp-istanbul',
 	isparta: 'isparta',
-	rollup: 'gulp-rollup',
+	rollupStream: 'rollup-stream',
 	rollupBabel: ['rollup-plugin-babel'],
+	vinylSourceBuffer: 'vinyl-source-buffer',
 	exec: ['child_process', 'exec', toAsync],
 });
 
@@ -28,27 +29,27 @@ gulp.task('build-min', PACKAGES.map(p => `build-min-${p}`));
 PACKAGES.forEach(pakName => {
 	// mk build-*
 	gulp.task(`build-${pakName}`, () =>
-		gulp.src('./src/**/*.js')
-			.pipe($.sourcemaps.init())
-			.pipe($.rollup({
-				entry: `./src/${pakName}.js`,
-				format: 'cjs',
-				exports: 'named',
-				sourceMap: true,
-				plugins: [
-					$.rollupBabel({
-						babelrc: false,
-						presets: ['es2015-rollup'],
-						plugins: [
-							'transform-runtime',
-							'transform-function-bind',
-							'transform-async-to-generator',
-							'transform-class-properties',
-						],
-						runtimeHelpers: true,
-					}),
-				],
-			}))
+		$.rollupStream({
+			entry: `./src/${pakName}.js`,
+			format: 'cjs',
+			exports: 'named',
+			sourceMap: true,
+			plugins: [
+				$.rollupBabel({
+					babelrc: false,
+					presets: ['es2015-rollup'],
+					plugins: [
+						'transform-runtime',
+						'transform-function-bind',
+						'transform-async-to-generator',
+						'transform-class-properties',
+					],
+					runtimeHelpers: true,
+				}),
+			],
+		})
+			.pipe($.vinylSourceBuffer(`${pakName}.js`))
+			.pipe($.sourcemaps.init({loadMaps: true}))
 			.pipe($.sourcemaps.write('./'))
 			.pipe(gulp.dest(`./packages/${pakName}`))
 	);
