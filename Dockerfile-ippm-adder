@@ -5,6 +5,8 @@ COPY src/ippm-adder.js /tmp/ippm/src/
 COPY packages/ippm-adder /usr/src/app
 
 RUN { set -ex; \
+	npm install -g npm@3; \
+
 	# build
 	cd /tmp/ippm; \
 	npm install; \
