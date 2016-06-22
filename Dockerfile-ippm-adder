@@ -1,0 +1,26 @@
+FROM node:6-slim
+
+COPY package.json gulpfile.babel.js .babelrc src packages /tmp/ippm/
+RUN { set -ex; \
+	# build
+	cd /tmp/ippm; \
+	npm install; \
+	node_modules/.bin/gulp build-ippm-adder; \
+
+	# install
+	mkdir -p /usr/src/app; \
+	mv packages/ippm-adder/{package.json,ippm-adder.js} /usr/src/app; \
+	cd /usr/src/app; \
+	npm install; \
+
+	mkdir /data; \
+	ln -s /data/ippm-adder /usr/src/app/ws; \
+
+	# clean up
+	npm cache clean; \
+	rm -r /tmp/*; \
+}
+
+WORKDIR /usr/src/app
+
+CMD ["node", "ippm-adder.js"]
