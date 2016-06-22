@@ -20,6 +20,7 @@ import gulpRename from 'gulp-rename';
 import streamFilter from 'through2-filter';
 import streamSpy from 'through2-spy';
 import endsWith from 'core-js/library/fn/string/virtual/ends-with';
+import find from 'core-js/library/fn/array/virtual/find';
 import Vinyl from 'vinyl';
 import * as path from 'path';
 import {toB58String} from 'multihashes';
@@ -157,7 +158,9 @@ async function processPackage(pak) {
 	let ipfsId;
 	try {
 		const ipfsRes = await ipfs.files.add(files, {recursive: true});
-		ipfsId = toB58String(ipfsRes[ipfsRes.length - 1].node.multihash());
+		const rootNode = ipfsRes::find(r => r.path === 'root');
+		if (rootNode === undefined) throw new Error('Could not find "root" ipfs-node');
+		ipfsId = toB58String(rootNode.node.multihash());
 	} finally {
 		releaseLock();
 	}
