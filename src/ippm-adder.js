@@ -140,7 +140,8 @@ async function processPackage(pak) {
 
 			const parentDirname = v.dirname;
 			const dirname = path.relative(path.dirname(parentDirname), parentDirname);
-			const contents = new Buffer(`exports = require('./${dirname}/index.js');\n`);
+			const dirnameEscaped = dirname.replace(/[\\']/g, '\\$&');
+			const contents = new Buffer(`module.exports = require('./${dirnameEscaped}/index.js');\n`);
 
 			this.push(new Vinyl({
 				path: path.resolve(v.dirname, `../${dirname}.js`),
