@@ -157,15 +157,15 @@ async function processPackage(pak) {
 	);
 
 	const releaseLock = await IPFS_LOCK.lock();
-	let ipfsId;
+	let ipfsRes;
 	try {
-		const ipfsRes = await ipfs.files.add(files, {recursive: true});
-		const rootNode = ipfsRes::find(r => r.path === 'root');
-		if (rootNode === undefined) throw new Error('Could not find "root" ipfs-node');
-		ipfsId = toB58String(rootNode.node.multihash());
+		ipfsRes = await ipfs.files.add(files, {recursive: true});
 	} finally {
 		releaseLock();
 	}
+	const rootNode = ipfsRes::find(r => r.path === 'root');
+	if (rootNode === undefined) throw new Error('Could not find "root" ipfs-node');
+	const ipfsId = toB58String(rootNode.node.multihash());
 
 	await writePakId(pak, ipfsId);
 
