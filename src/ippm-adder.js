@@ -34,6 +34,7 @@ const mkdirp = toAsync(_mkdirp);
 const ipfs = ipfsApi({host: 'localhost', port: '5001', procotol: 'http'});
 const db = new DBConn('https://skimdb.npmjs.com', 443, {}).database('registry');
 const dataPath = './ws';
+let ipfsWorkDur = 0;
 
 async function readState() {
 	try {
@@ -159,7 +160,9 @@ async function processPackage(pak) {
 	const releaseLock = await IPFS_LOCK.lock();
 	let ipfsRes;
 	try {
+		const startTime = Date.now();
 		ipfsRes = await ipfs.files.add(files, {recursive: true});
+		ipfsWorkDur += Date.now() - startTime;
 	} finally {
 		releaseLock();
 	}
@@ -190,7 +193,6 @@ asyncMain(async () => {
 	}
 
 	let dbFails = 0;
-	let lastPause = Date.now();
 
 	for (;;) {
 		try {
@@ -244,11 +246,11 @@ asyncMain(async () => {
 			state.failedQueue = [];
 
 			for (const changedPackagesChunk of changedPackages) {
-				const sleepTime = Math.floor((Date.now() - lastPause) * 0.1);
-				if (5000 < sleepTime) {
-					console.log(`pausing for ${sleepTime / 1000}s`);
-					await sleep(sleepTime);
-					lastPause = Date.now();
+				const sleepDur = Math.floor(ipfsWorkDur * 0.1);
+				if (5000 < sleepDur) {
+					console.log(`pausing for ${sleepDur / 1000}s`);
+					ipfsWorkDur = 0;
+					await sleep(sleepDur);
 				}
 
 				// eslint-disable-next-line array-callback-return
