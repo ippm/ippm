@@ -4,6 +4,7 @@ import {
 	asyncMain,
 	Lock,
 	callNodeAsync as cAsync,
+	sleep,
 } from 'js-utils';
 import * as fs from 'js-utils-fs';
 import {get as httpGet} from 'http';
@@ -189,6 +190,7 @@ asyncMain(async () => {
 	}
 
 	let dbFails = 0;
+	let lastPause = Date.now();
 
 	for (;;) {
 		try {
@@ -242,6 +244,13 @@ asyncMain(async () => {
 			state.failedQueue = [];
 
 			for (const changedPackagesChunk of changedPackages) {
+				const sleepTime = Math.floor((Date.now() - lastPause) * 0.1);
+				if (5000 < sleepTime) {
+					console.log(`pausing for ${sleepTime / 1000}s`);
+					await sleep(sleepTime);
+					lastPause = Date.now();
+				}
+
 				// eslint-disable-next-line array-callback-return
 				await Promise.all(changedPackagesChunk.map(async (pak) => {
 					try {
