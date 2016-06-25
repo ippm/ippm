@@ -27,7 +27,6 @@ import * as path from 'path';
 import {toB58String} from 'multihashes';
 
 const REPO_LOCK = new Lock();
-const IPFS_LOCK = new Lock();
 
 const mkdirp = toAsync(_mkdirp);
 
@@ -157,15 +156,9 @@ async function processPackage(pak) {
 		streamFilter.obj(() => false) // eat all files
 	);
 
-	const releaseLock = await IPFS_LOCK.lock();
-	let ipfsRes;
-	try {
-		const startTime = Date.now();
-		ipfsRes = await ipfs.files.add(files, {recursive: true});
-		ipfsWorkDur += Date.now() - startTime;
-	} finally {
-		releaseLock();
-	}
+	const startTime = Date.now();
+	const ipfsRes = await ipfs.files.add(files, {recursive: true});
+	ipfsWorkDur += Date.now() - startTime;
 	const rootNode = ipfsRes::find(r => r.path === 'root');
 	if (rootNode === undefined) throw new Error('Could not find "root" ipfs-node');
 	const ipfsId = toB58String(rootNode.node.multihash());
