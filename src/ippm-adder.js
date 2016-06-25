@@ -187,7 +187,14 @@ asyncMain(async () => {
 
 	let dbFails = 0;
 
-	for (;;) {
+	let running = true;
+	const exitHandler = () => {
+		running = false;
+	};
+	process.on('SIGINT', exitHandler);
+	process.on('SIGTERM', exitHandler);
+
+	while (running) {
 		try {
 			let changes;
 			try {
@@ -239,6 +246,8 @@ asyncMain(async () => {
 			state.failedQueue = [];
 
 			for (const changedPackagesChunk of changedPackages) {
+				if (!running) break;
+
 				const sleepDur = Math.floor(ipfsWorkDur * 0.1);
 				if (5000 < sleepDur) {
 					console.log(`pausing for ${sleepDur / 1000}s`);
