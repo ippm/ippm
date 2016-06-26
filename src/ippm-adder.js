@@ -167,7 +167,11 @@ async function processPackage(pak) {
 		releaseLock();
 	}
 	const rootNode = ipfsRes::find(r => r.path === 'root');
-	if (rootNode === undefined) throw new Error('Could not find "root" ipfs-node');
+	if (rootNode === undefined) {
+		const e = new Error('Could not find "root" ipfs-node');
+		e.failureFactor = 5;
+		throw e;
+	}
 	const ipfsId = toB58String(rootNode.node.multihash());
 
 	await writePakId(pak, ipfsId);
@@ -269,7 +273,7 @@ asyncMain(async () => {
 						if (ipfsId) await logAdd(pak, ipfsId);
 					} catch (e) {
 						// eslint-disable-next-line no-param-reassign
-						pak.numberFails += 1;
+						pak.numberFails += e.failureFactor || 1;
 
 						await logError(`${pak.nameVer}: exception (#${pak.numberFails}): ${e}`);
 
