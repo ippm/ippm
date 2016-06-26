@@ -159,11 +159,11 @@ async function processPackage(pak) {
 
 	const releaseLock = await IPFS_LOCK.lock();
 	let ipfsRes;
+	const startTime = Date.now();
 	try {
-		const startTime = Date.now();
 		ipfsRes = await ipfs.files.add(files, {recursive: true});
-		ipfsWorkDur += Date.now() - startTime;
 	} finally {
+		ipfsWorkDur += Date.now() - startTime;
 		releaseLock();
 	}
 	const rootNode = ipfsRes::find(r => r.path === 'root');
