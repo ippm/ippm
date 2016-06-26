@@ -255,7 +255,7 @@ asyncMain(async () => {
 			for (const changedPackagesChunk of changedPackages) {
 				if (!running) break;
 
-				const sleepDur = Math.floor(ipfsWorkDur * 0.1);
+				const sleepDur = Math.floor(ipfsWorkDur * 0.5);
 				if (5000 < sleepDur) {
 					console.log(`pausing for ${sleepDur / 1000}s`);
 					ipfsWorkDur = 0;
