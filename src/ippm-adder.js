@@ -131,6 +131,7 @@ asyncMain(async () => {
 		new CouchDBFeed({
 			db: 'https://skimdb.npmjs.com/registry',
 			since,
+			include_docs: true,
 		}),
 		through2.obj(function $mapChangeToPaks(change, _, cb) {
 			const promises = Object.keys(change.doc.versions).map(dirtyVersion => {
