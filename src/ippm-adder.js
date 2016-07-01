@@ -127,6 +127,8 @@ asyncMain(async () => {
 		// ignore exception
 	}
 
+	let lastWrittenSeq = 0;
+
 	await cAsync(pump,
 		new CouchDBFeed({
 			db: 'https://skimdb.npmjs.com/registry',
@@ -250,7 +252,14 @@ asyncMain(async () => {
 				await writePakId(pak, ipfsId);
 				await logAdd(pak, ipfsId);
 			})
-				.then(() => fs.writeFile(`${dataPath}/seq`, `${pak.seq.toString(10)}\n`, 'utf-8'))
+				.then(() => {
+					if (lastWrittenSeq < pak.seq) {
+						lastWrittenSeq = pak.seq;
+						return fs.writeFile(`${dataPath}/seq`, `${pak.seq.toString(10)}\n`, 'utf-8');
+					}
+
+					return undefined;
+				})
 				.then(
 					() => cb(),
 					e => {
