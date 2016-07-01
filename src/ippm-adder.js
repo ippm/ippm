@@ -216,6 +216,7 @@ asyncMain(async () => {
 						return false;
 					})
 				);
+				return files;
 			})
 				.then(files => {
 					this.push({
@@ -223,7 +224,13 @@ asyncMain(async () => {
 						files,
 					});
 				})
-				.then(() => cb(), e => logException(pak, e));
+				.then(
+					() => cb(),
+					e => {
+						logException(pak, e);
+						cb();
+					}
+				);
 		}),
 		to2.obj(({pak, files}, _, cb) => { // adds files to ipfs
 			retry(async () => {
@@ -244,7 +251,13 @@ asyncMain(async () => {
 				await logAdd(pak, ipfsId);
 			})
 				.then(() => fs.writeFile(`${dataPath}/seq`, `${pak.seq.toString(10)}\n`, 'utf-8'))
-				.then(() => cb(), e => logException(pak, e));
+				.then(
+					() => cb(),
+					e => {
+						logException(pak, e);
+						cb();
+					}
+			);
 		})
 	);
 });
