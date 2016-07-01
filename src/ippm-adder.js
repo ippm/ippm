@@ -8,7 +8,7 @@ import {
 } from 'js-utils';
 import * as fs from 'js-utils-fs';
 import {get as httpGet} from 'http';
-import {Connection as DBConn} from 'cradle';
+import {Feed as CouchDBFeed} from 'follow';
 import {extract as tarExtract} from 'tar-vinyl-stream';
 import gunzipMaybe from 'gunzip-maybe';
 import digestStream from 'digest-stream';
@@ -25,29 +25,28 @@ import find from 'core-js/library/fn/array/virtual/find';
 import Vinyl from 'vinyl';
 import * as path from 'path';
 import {toB58String} from 'multihashes';
+import through2 from 'through2';
+import to2 from 'to2';
 
 const REPO_LOCK = new Lock();
-const IPFS_LOCK = new Lock();
 
 const mkdirp = toAsync(_mkdirp);
 
 const ipfs = ipfsApi({host: 'localhost', port: '5001', procotol: 'http'});
-const db = new DBConn('https://skimdb.npmjs.com', 443, {}).database('registry');
 const dataPath = './ws';
 let ipfsWorkDur = 0;
 
-async function readState() {
-	try {
-		return JSON.parse(await fs.readFile(`${dataPath}/state.json`, 'utf-8'));
-	} catch (e) {
-		if (e.code !== 'ENOENT') throw e;
+async function retry(fn) {
+	for (let attempt = 1; ; attempt += 1) {
+		try {
+			return await fn();
+		} catch (e) {
+			if (attempt <= 3) {
+				sleep(10000);
+				continue;
+			} else throw e;
+		}
 	}
-
-	return {last_seq: 0, failedQueue: []};
-}
-
-function writeState(state) {
-	return fs.writeFile(`${dataPath}/state.json`, JSON.stringify(state), 'utf-8');
 }
 
 async function writePakId({name, version}, ipfsId) {
@@ -95,197 +94,156 @@ async function versionExists({name, version}) {
 	}
 }
 
-async function processPackage(pak) {
-	if (await versionExists(pak)) return undefined;
-
-	const tarRes = await new Promise((resolve, reject) =>
-		httpGet(pak.tarUrl, resolve).on('error', reject)
+const errorLogStream = fs.createWriteStream(`${dataPath}/errorlog`, {flags: 'a'});
+function logException(pak, exception) {
+	console.log(` ### ${pak.nameVer}: ${exception}`);
+	return errorLogStream::cAsync(
+		'write',
+		`${pak.nameVer} exception: ${exception}\n${pak.nameVer}: skipped\n`,
+		'utf-8'
 	);
+}
 
-	if (tarRes.statusCode !== 200) {
-		if (tarRes.headers['content-type'] === 'application/json') {
-			await new Promise((_, reject) => {
-				let msgData = '';
-				tarRes
-					.on('error', reject)
-					.on('data', chunk => {
-						msgData += chunk;
-					})
-					.on('end', () => {
-						const msg = JSON.parse(msgData);
-						reject(new Error(`${msg.error || tarRes.statusMessage} "${pak.tarUrl}"`));
-					});
-			});
-		} else {
-			tarRes.abort();
-			throw new Error(`${tarRes.statusMessage} "${pak.tarUrl}"`);
-		}
-	}
-
-
-	const files = [];
-	await cAsync(pump,
-		tarRes,
-		digestStream('sha1', 'hex', shasum =>
-			pak.shasum !== shasum ? new Error(`shasum mismatch "${pak.tarUrl}"`) : undefined
-		),
-		gunzipMaybe(),
-		tarExtract(),
-		streamFilter.obj(f => f.tarHeader.type === 'file'),
-		gulpRename(f => {
-			// eslint-disable-next-line no-param-reassign
-			f.dirname = `root/${pak.nameVer}/${f.dirname.substring(8)}`;
-		}),
-		// eslint-disable-next-line func-names
-		streamSpy.obj(function (v) {
-			if (!v.path::endsWith('/index.js')) return;
-
-			const parentDirname = v.dirname;
-			const dirname = path.relative(path.dirname(parentDirname), parentDirname);
-			const dirnameEscaped = dirname.replace(/[\\']/g, '\\$&');
-			const contents = new Buffer(`module.exports = require('./${dirnameEscaped}/index.js');\n`);
-
-			this.push(new Vinyl({
-				path: path.resolve(v.dirname, `../${dirname}.js`),
-				contents,
-			}));
-		}),
-		streamSpy.obj(v => files.push({
-			path: v.relative,
-			content: v.contents,
-		})),
-		streamFilter.obj(() => false) // eat all files
-	);
-
-	const releaseLock = await IPFS_LOCK.lock();
-	let ipfsRes;
-	const startTime = Date.now();
-	try {
-		ipfsRes = await ipfs.files.add(files, {recursive: true});
-	} finally {
-		ipfsWorkDur += Date.now() - startTime;
-		releaseLock();
-	}
-	const rootNode = ipfsRes::find(r => r.path === 'root');
-	if (rootNode === undefined) {
-		const e = new Error('Could not find "root" ipfs-node');
-		e.failureFactor = 5;
-		throw e;
-	}
-	const ipfsId = toB58String(rootNode.node.multihash());
-
-	await writePakId(pak, ipfsId);
-
-	return ipfsId;
+const addLogStream = fs.createWriteStream(`${dataPath}/addlog`, {flags: 'a'});
+function logAdd(pak, ipfsId) {
+	console.log(` + ${pak.nameVer}: ${ipfsId}`);
+	const logString = JSON.stringify({name: pak.nameVer, ipfs: ipfsId});
+	return addLogStream::cAsync('write', `${logString}\n`, 'utf-8');
 }
 
 asyncMain(async () => {
-	const state = await readState();
 	await mkdirp(dataPath);
 
-	const errorLogStream = fs.createWriteStream(`${dataPath}/errorlog`, {flags: 'a'});
-	function logError(msg) {
-		console.log(` ### ${msg}`);
-		return errorLogStream::cAsync('write', `${msg}\n`, 'utf-8');
-	}
-
-	const addLogStream = fs.createWriteStream(`${dataPath}/addlog`, {flags: 'a'});
-	function logAdd(pak, ipfsId) {
-		console.log(` + ${pak.nameVer}: ${ipfsId}`);
-		const logString = JSON.stringify({name: pak.nameVer, ipfs: ipfsId});
-		return addLogStream::cAsync('write', `${logString}\n`, 'utf-8');
-	}
-
-	let dbFails = 0;
-
-	let running = true;
 	const exitHandler = () => {
-		running = false;
+		// TODO: exit
 	};
 	process.on('SIGINT', exitHandler);
 	process.on('SIGTERM', exitHandler);
 
-	while (running) {
-		try {
-			let changes;
-			try {
-				changes = await db::cAsync('changes', {
-					since: state.last_seq,
-					feed: 'longpoll',
-					limit: 10,
-					include_docs: true,
-				});
-
-				dbFails = 0;
-			} catch (e) {
-				dbFails += 1;
-
-				if (dbFails < 10) {
-					console.log(e);
-					continue;
-				}
-
-				throw e;
-			}
-
-			const changedPackages = changes
-				.reduce(
-					(vers, row) => vers.concat(
-						Object.keys(row.doc.versions).map(k => row.doc.versions[k])
-					),
-					[]
-				)
-				.map(pak => {
-					const version = semver.clean(pak.version, true);
-					return {
-						name: pak.name,
-						version,
-						nameVer: `${pak.name}@${version}`,
-						shasum: pak.dist.shasum,
-						tarUrl: pak.dist.tarball,
-						numberFails: 0,
-					};
-				})
-				.concat(state.failedQueue)
-				.reduce((chunks, pak) => {
-					if (10 <= chunks[chunks.length - 1].length) chunks.push([]);
-
-					chunks[chunks.length - 1].push(pak);
-					return chunks;
-				}, [[]]);
-
-			state.failedQueue = [];
-
-			for (const changedPackagesChunk of changedPackages) {
-				if (!running) break;
-
-				const sleepDur = Math.floor(ipfsWorkDur * 0.5);
-				if (5000 < sleepDur) {
-					console.log(`pausing for ${sleepDur / 1000}s`);
-					ipfsWorkDur = 0;
-					await sleep(sleepDur);
-				}
-
-				// eslint-disable-next-line array-callback-return
-				await Promise.all(changedPackagesChunk.map(async (pak) => {
-					try {
-						const ipfsId = await processPackage(pak);
-						if (ipfsId) await logAdd(pak, ipfsId);
-					} catch (e) {
-						// eslint-disable-next-line no-param-reassign
-						pak.numberFails += e.failureFactor || 1;
-
-						await logError(`${pak.nameVer}: exception (#${pak.numberFails}): ${e}`);
-
-						if (pak.numberFails < 10) state.failedQueue.push(pak);
-						else await logError(`${pak.nameVer}: skipped`);
-					}
-				}));
-			}
-
-			state.last_seq = changes.last_seq;
-		} finally {
-			await writeState(state);
-		}
+	let since = 0;
+	try {
+		since = Number.parseInt(await fs.readFile(`${dataPath}/seq`, 'utf-8'), 10);
+	} catch (_) {
+		// ignore exception
 	}
+
+	await cAsync(pump,
+		new CouchDBFeed({
+			db: 'https://skimdb.npmjs.com/registry',
+			since,
+		}),
+		through2.obj(function $mapChangeToPaks(change, _, cb) {
+			const promises = Object.keys(change.doc.versions).map(dirtyVersion => {
+				const meta = change.doc.versions[dirtyVersion];
+				const version = semver.clean(dirtyVersion, true);
+				const pak = {
+					name: meta.name,
+					version,
+					nameVer: `${meta.name}@${version}`,
+					shasum: meta.dist.shasum,
+					tarUrl: meta.dist.tarball,
+					seq: change.seq,
+				};
+
+				return versionExists(pak).then(exists => {
+					if (!exists) this.push(pak);
+				});
+			});
+
+			Promise.all(promises).then(() => cb(), e => cb(e));
+		}),
+		through2.obj(function $downloadFilesFromNpm(pak, _, cb) {
+			retry(async () => {
+				const tarRes = await new Promise((resolve, reject) =>
+					httpGet(pak.tarUrl, resolve).on('error', reject)
+				);
+
+				if (tarRes.statusCode !== 200) {
+					if (tarRes.headers['content-type'] === 'application/json') {
+						await new Promise((_1, reject) => {
+							let msgData = '';
+							tarRes
+								.on('error', reject)
+								.on('data', chunk => {
+									msgData += chunk;
+								})
+								.on('end', () => {
+									const msg = JSON.parse(msgData);
+									reject(new Error(`${msg.error || tarRes.statusMessage} "${pak.tarUrl}"`));
+								});
+						});
+					} else {
+						tarRes.abort();
+						throw new Error(`${tarRes.statusMessage} "${pak.tarUrl}"`);
+					}
+				}
+
+				const files = [];
+				await cAsync(pump,
+					tarRes,
+					digestStream('sha1', 'hex', shasum => (
+						pak.shasum !== shasum ? new Error(`shasum mismatch "${pak.tarUrl}"`) : undefined
+					)),
+					gunzipMaybe(),
+					tarExtract(),
+					streamFilter.obj(f => f.tarHeader.type === 'file'),
+					gulpRename(f => {
+						// eslint-disable-next-line no-param-reassign
+						f.dirname = `root/${pak.nameVer}/${f.dirname.substring(8)}`;
+					}),
+					// eslint-disable-next-line func-names
+					streamSpy.obj(function (v) {
+						if (!v.path::endsWith('/index.js')) return;
+
+						const parentDirname = v.dirname;
+						const dirname = path.relative(path.dirname(parentDirname), parentDirname);
+						const dirnameEscaped = dirname.replace(/[\\']/g, '\\$&');
+						const contents = new Buffer(
+							`module.exports = require('./${dirnameEscaped}/index.js');\n`
+						);
+
+						this.push(new Vinyl({
+							path: path.resolve(v.dirname, `../${dirname}.js`),
+							contents,
+						}));
+					}),
+					streamFilter.obj(v => {
+						files.push({
+							path: v.relative,
+							content: v.contents,
+						});
+						return false;
+					})
+				);
+			})
+				.then(files => {
+					this.push({
+						pak,
+						files,
+					});
+				})
+				.then(() => cb(), e => logException(pak, e));
+		}),
+		to2.obj(({pak, files}, _, cb) => { // adds files to ipfs
+			retry(async () => {
+				let ipfsRes;
+				const startTime = Date.now();
+				try {
+					ipfsRes = await ipfs.files.add(files, {recursive: true});
+				} finally {
+					ipfsWorkDur += Date.now() - startTime;
+				}
+				const rootNode = ipfsRes::find(r => r.path === 'root');
+				if (rootNode === undefined) {
+					throw new Error('Could not find "root" ipfs-node');
+				}
+				const ipfsId = toB58String(rootNode.node.multihash());
+
+				await writePakId(pak, ipfsId);
+				await logAdd(pak, ipfsId);
+			})
+				.then(() => fs.writeFile(`${dataPath}/seq`, `${pak.seq.toString(10)}\n`, 'utf-8'))
+				.then(() => cb(), e => logException(pak, e));
+		})
+	);
 });
