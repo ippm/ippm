@@ -8,7 +8,7 @@ import {
 } from 'js-utils';
 import * as fs from 'js-utils-fs';
 import {get as httpGet} from 'http';
-import {Feed as CouchDBFeed} from 'follow';
+import {default as CouchDBFeed} from 'changes-stream';
 import {extract as tarExtract} from 'tar-vinyl-stream';
 import gunzipMaybe from 'gunzip-maybe';
 import digestStream from 'digest-stream';
