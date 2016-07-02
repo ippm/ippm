@@ -26,7 +26,6 @@ import Vinyl from 'vinyl';
 import * as path from 'path';
 import {toB58String} from 'multihashes';
 import through2 from 'through2';
-import to2 from 'to2';
 
 const REPO_LOCK = new Lock();
 
@@ -234,7 +233,7 @@ asyncMain(async () => {
 					}
 				);
 		}),
-		to2.obj(({pak, files}, _, cb) => { // adds files to ipfs
+		through2.obj(({pak, files}, _, cb) => { // adds files to ipfs
 			retry(async () => {
 				let ipfsRes;
 				const startTime = Date.now();
