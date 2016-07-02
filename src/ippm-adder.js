@@ -253,8 +253,11 @@ asyncMain(async () => {
 			})
 				.then(() => {
 					if (lastWrittenSeq < pak.seq) {
+						const forelastWrittenSeq = lastWrittenSeq;
 						lastWrittenSeq = pak.seq;
-						return fs.writeFile(`${dataPath}/seq`, `${pak.seq.toString(10)}\n`, 'utf-8');
+						if (forelastWrittenSeq !== 0) {
+							return fs.writeFile(`${dataPath}/seq`, `${forelastWrittenSeq.toString(10)}\n`);
+						}
 					}
 
 					return undefined;
