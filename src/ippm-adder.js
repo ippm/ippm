@@ -26,6 +26,7 @@ import Vinyl from 'vinyl';
 import * as path from 'path';
 import {toB58String} from 'multihashes';
 import through2 from 'through2';
+import {Readable as ReadableStream} from 'readable-stream';
 
 const REPO_LOCK = new Lock();
 
@@ -126,16 +127,19 @@ asyncMain(async () => {
 		// ignore exception
 	}
 
-	let lastWrittenSeq = 0;
-
 	await cAsync(pump,
 		new CouchDBFeed({
 			db: 'https://skimdb.npmjs.com/registry',
 			since,
 			include_docs: true,
 		}),
-		through2.obj(function $mapChangeToPaks(change, _, cb) {
-			const promises = Object.keys(change.doc.versions).map(dirtyVersion => {
+		through2.obj((change, _, mainCb) => {
+			const versionStream = new ReadableStream({
+				objectMode: true,
+				read() {},
+			});
+
+			Object.keys(change.doc.versions).forEach(dirtyVersion => {
 				const meta = change.doc.versions[dirtyVersion];
 				const version = semver.clean(dirtyVersion, true);
 				const pak = {
@@ -144,131 +148,110 @@ asyncMain(async () => {
 					nameVer: `${meta.name}@${version}`,
 					shasum: meta.dist.shasum,
 					tarUrl: meta.dist.tarball,
-					seq: change.seq,
 				};
 
-				return versionExists(pak).then(exists => {
-					if (!exists) this.push(pak);
+				versionExists(pak).then(exists => {
+					if (!exists) versionStream.push(pak);
 				});
 			});
 
-			Promise.all(promises).then(() => cb(), e => cb(e));
-		}),
-		through2.obj(function $downloadFilesFromNpm(pak, _, cb) {
-			retry(async () => {
-				const tarRes = await new Promise((resolve, reject) =>
-					httpGet(pak.tarUrl, resolve).on('error', reject)
-				);
-
-				if (tarRes.statusCode !== 200) {
-					if (tarRes.headers['content-type'] === 'application/json') {
-						await new Promise((_1, reject) => {
-							let msgData = '';
-							tarRes
-								.on('error', reject)
-								.on('data', chunk => {
-									msgData += chunk;
-								})
-								.on('end', () => {
-									const msg = JSON.parse(msgData);
-									reject(new Error(`${msg.error || tarRes.statusMessage} "${pak.tarUrl}"`));
-								});
-						});
-					} else {
-						tarRes.abort();
-						throw new Error(`${tarRes.statusMessage} "${pak.tarUrl}"`);
-					}
-				}
-
-				const files = [];
-				await cAsync(pump,
-					tarRes,
-					digestStream('sha1', 'hex', shasum => (
-						pak.shasum !== shasum ? new Error(`shasum mismatch "${pak.tarUrl}"`) : undefined
-					)),
-					gunzipMaybe(),
-					tarExtract(),
-					streamFilter.obj(f => f.tarHeader.type === 'file'),
-					gulpRename(f => {
-						// eslint-disable-next-line no-param-reassign
-						f.dirname = `root/${pak.nameVer}/${f.dirname.substring(8)}`;
-					}),
-					// eslint-disable-next-line func-names
-					streamSpy.obj(function (v) {
-						if (!v.path::endsWith('/index.js')) return;
-
-						const parentDirname = v.dirname;
-						const dirname = path.relative(path.dirname(parentDirname), parentDirname);
-						const dirnameEscaped = dirname.replace(/[\\']/g, '\\$&');
-						const contents = new Buffer(
-							`module.exports = require('./${dirnameEscaped}/index.js');\n`
+			cAsync(pump,
+				versionStream,
+				through2.obj(function $downloadFilesFromNpm(pak, _2, cb) {
+					retry(async () => {
+						const tarRes = await new Promise((resolve, reject) =>
+							httpGet(pak.tarUrl, resolve).on('error', reject)
 						);
 
-						this.push(new Vinyl({
-							path: path.resolve(v.dirname, `../${dirname}.js`),
-							contents,
-						}));
-					}),
-					streamFilter.obj(v => {
-						files.push({
-							path: v.relative,
-							content: v.contents,
-						});
-						return false;
-					})
-				);
-				return files;
-			})
-				.then(files => {
-					this.push({
-						pak,
-						files,
-					});
-				})
-				.then(
-					() => cb(),
-					e => {
-						logException(pak, e);
-						cb();
-					}
-				);
-		}),
-		through2.obj({highWaterMark: 2}, ({pak, files}, _, cb) => { // adds files to ipfs
-			retry(async () => {
-				let ipfsRes;
-				const startTime = Date.now();
-				try {
-					ipfsRes = await ipfs.files.add(files, {recursive: true});
-				} finally {
-					ipfsWorkDur += Date.now() - startTime;
-				}
-				const rootNode = ipfsRes::find(r => r.path === 'root');
-				if (rootNode === undefined) {
-					throw new Error('Could not find "root" ipfs-node');
-				}
-				const ipfsId = toB58String(rootNode.node.multihash());
-
-				await writePakId(pak, ipfsId);
-				await logAdd(pak, ipfsId);
-			})
-				.then(() => {
-					if (lastWrittenSeq < pak.seq) {
-						const forelastWrittenSeq = lastWrittenSeq;
-						lastWrittenSeq = pak.seq;
-						if (forelastWrittenSeq !== 0) {
-							return fs.writeFile(`${dataPath}/seq`, `${forelastWrittenSeq.toString(10)}\n`);
+						if (tarRes.statusCode !== 200) {
+							if (tarRes.headers['content-type'] === 'application/json') {
+								await new Promise((_1, reject) => {
+									let msgData = '';
+									tarRes
+										.on('error', reject)
+										.on('data', chunk => {
+											msgData += chunk;
+										})
+										.on('end', () => {
+											const msg = JSON.parse(msgData);
+											reject(new Error(`${msg.error || tarRes.statusMessage} "${pak.tarUrl}"`));
+										});
+								});
+							} else {
+								tarRes.abort();
+								throw new Error(`${tarRes.statusMessage} "${pak.tarUrl}"`);
+							}
 						}
-					}
 
-					return undefined;
+						const files = [];
+						await cAsync(pump,
+							tarRes,
+							digestStream('sha1', 'hex', shasum => (
+								pak.shasum !== shasum ? new Error(`shasum mismatch "${pak.tarUrl}"`) : undefined
+							)),
+							gunzipMaybe(),
+							tarExtract(),
+							streamFilter.obj(f => f.tarHeader.type === 'file'),
+							gulpRename(f => {
+								// eslint-disable-next-line no-param-reassign
+								f.dirname = `root/${pak.nameVer}/${f.dirname.substring(8)}`;
+							}),
+							// eslint-disable-next-line func-names
+							streamSpy.obj(function (v) {
+								if (!v.path::endsWith('/index.js')) return;
+
+								const parentDirname = v.dirname;
+								const dirname = path.relative(path.dirname(parentDirname), parentDirname);
+								const dirnameEscaped = dirname.replace(/[\\']/g, '\\$&');
+								const contents = new Buffer(
+									`module.exports = require('./${dirnameEscaped}/index.js');\n`
+								);
+
+								this.push(new Vinyl({
+									path: path.resolve(v.dirname, `../${dirname}.js`),
+									contents,
+								}));
+							}),
+							streamFilter.obj(v => {
+								files.push({
+									path: v.relative,
+									content: v.contents,
+								});
+								return false;
+							})
+						);
+						return files;
+					})
+						.then(files => this.push({pak, files}))
+						.catch(e => logException(pak, e))
+						.then(() => cb());
+				}),
+				through2.obj({highWaterMark: 2}, ({pak, files}, _2, cb) => { // adds files to ipfs
+					retry(async () => {
+						let ipfsRes;
+						const startTime = Date.now();
+						try {
+							ipfsRes = await ipfs.files.add(files, {recursive: true});
+						} finally {
+							ipfsWorkDur += Date.now() - startTime;
+						}
+						const rootNode = ipfsRes::find(r => r.path === 'root');
+						if (rootNode === undefined) {
+							throw new Error('Could not find "root" ipfs-node');
+						}
+						const ipfsId = toB58String(rootNode.node.multihash());
+
+						await Promise.all([
+							writePakId(pak, ipfsId),
+							logAdd(pak, ipfsId),
+						]);
+					})
+						.catch(e => logException(pak, e))
+						.then(() => cb());
 				})
-				.then(
-					() => cb(),
-					e => {
-						logException(pak, e);
-						cb();
-					}
-			);
+			)
+				.then(() => fs.writeFile(`${dataPath}/seq`, `${change.seq.toString(10)}\n`))
+				.then(() => mainCb(), e => mainCb(e));
 		})
 	);
 });
