@@ -233,7 +233,7 @@ asyncMain(async () => {
 					}
 				);
 		}),
-		through2.obj(({pak, files}, _, cb) => { // adds files to ipfs
+		through2.obj({highWaterMark: 2}, ({pak, files}, _, cb) => { // adds files to ipfs
 			retry(async () => {
 				let ipfsRes;
 				const startTime = Date.now();
