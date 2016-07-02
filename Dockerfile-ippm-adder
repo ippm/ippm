@@ -27,4 +27,4 @@ RUN { set -ex; \
 
 WORKDIR /usr/src/app
 
-CMD ["node", "ippm-adder.js"]
+CMD ["node", "--max-old-space-size=8192", "ippm-adder.js"]
