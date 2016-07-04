@@ -1,4 +1,13 @@
 {
 	"presets": ["es2015-node4"],
-	"plugins": ["transform-async-to-generator", "transform-function-bind", "transform-class-properties"]
+	"plugins": [
+		"transform-promise-to-bluebird",
+		"transform-function-bind",
+		["transform-async-to-module-method", {
+			"module": "bluebird",
+			"method": "coroutine",
+		}],
+		"transform-function-bind",
+		"transform-class-properties"
+	]
 }

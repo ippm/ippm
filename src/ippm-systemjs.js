@@ -4,6 +4,8 @@ import startsWith from 'core-js/library/fn/string/virtual/starts-with';
 import find from 'core-js/library/fn/array/virtual/find';
 import {resolve as urlResolve} from 'url';
 
+global.Promise = Promise;
+
 const NAME_REGEX = /^([^!\/\.][^!\/]*)(?:\/([^!]+))?$/;
 
 export class IppmSystem extends System {

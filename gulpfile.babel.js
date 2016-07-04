@@ -39,9 +39,13 @@ PACKAGES.forEach(pakName => {
 					babelrc: false,
 					presets: ['es2015-rollup'],
 					plugins: [
+						'transform-promise-to-bluebird',
 						'transform-runtime',
 						'transform-function-bind',
-						'transform-async-to-generator',
+						['transform-async-to-module-method', {
+							module: 'bluebird',
+							method: 'coroutine',
+						}],
 						'transform-class-properties',
 					],
 					runtimeHelpers: true,

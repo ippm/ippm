@@ -28,6 +28,8 @@ import {toB58String} from 'multihashes';
 import through2 from 'through2';
 import {Readable as ReadableStream} from 'readable-stream';
 
+global.Promise = Promise;
+
 const REPO_LOCK = new Lock();
 
 const mkdirp = toAsync(_mkdirp);
