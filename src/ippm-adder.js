@@ -141,7 +141,7 @@ asyncMain(async () => {
 				read() {},
 			});
 
-			Object.keys(change.doc.versions).forEach(dirtyVersion => {
+			const promises = Object.keys(change.doc.versions).map(dirtyVersion => {
 				const meta = change.doc.versions[dirtyVersion];
 				const version = semver.clean(dirtyVersion, true);
 				const pak = {
@@ -152,14 +152,16 @@ asyncMain(async () => {
 					tarUrl: meta.dist.tarball,
 				};
 
-				versionExists(pak).then(exists => {
+				return versionExists(pak).then(exists => {
 					if (!exists) versionStream.push(pak);
 				});
 			});
 
+			Promise.all(promises).then(() => versionStream.push(null));
+
 			cAsync(pump,
 				versionStream,
-				through2.obj(function $downloadFilesFromNpm(pak, _2, cb) {
+				through2.obj({highWaterMark: 2}, function $downloadFilesFromNpm(pak, _2, cb) {
 					retry(async () => {
 						const tarRes = await new Promise((resolve, reject) =>
 							httpGet(pak.tarUrl, resolve).on('error', reject)
@@ -222,9 +224,8 @@ asyncMain(async () => {
 								return false;
 							})
 						);
-						return files;
+						this.push({pak, files});
 					})
-						.then(files => this.push({pak, files}))
 						.catch(e => logException(pak, e))
 						.then(() => cb());
 				}),
@@ -243,7 +244,7 @@ asyncMain(async () => {
 						}
 						const ipfsId = toB58String(rootNode.node.multihash());
 
-						await Promise.all([
+						return Promise.all([
 							writePakId(pak, ipfsId),
 							logAdd(pak, ipfsId),
 						]);
