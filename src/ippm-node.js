@@ -1,6 +1,6 @@
 import startsWith from 'core-js/library/fn/string/virtual/starts-with';
 import find from 'core-js/library/fn/array/virtual/find';
-import {findManifestFile, readManifestFile} from './libs/utils';
+import {findIppmFile, readLockFile} from './libs/utils';
 import Store from './ippm-node/store';
 import * as path from 'path';
 import {promise as deasync} from 'deasync';
@@ -34,8 +34,8 @@ const extensions = {
 const origExtensions = Object.assign({}, Module._extensions);
 
 async function main() {
-	const pakPath = await findManifestFile(path.dirname(module.parent.filename));
-	manifest = await readManifestFile(pakPath);
+	const pakPath = await findIppmFile(path.dirname(module.parent.filename));
+	manifest = await readLockFile(pakPath);
 
 	store = new Store({
 		path: pakPath,

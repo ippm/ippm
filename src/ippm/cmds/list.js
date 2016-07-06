@@ -1,6 +1,6 @@
 import {
-	findManifestFile,
-	readManifestFile,
+	findIppmFile,
+	readLockFile,
 	objectValueIter,
 	objectIter,
 } from '../../libs/utils';
@@ -9,8 +9,8 @@ import {fgGreen, fgBlue, reset} from '../../libs/colors';
 /* eslint-disable no-console */
 
 export default async function list() {
-	const projectPath = await findManifestFile(process.cwd());
-	const manifest = await readManifestFile(projectPath);
+	const projectPath = await findIppmFile(process.cwd());
+	const manifest = await readLockFile(projectPath);
 
 	[...manifest.packages::objectValueIter()]
 		.sort((a, b) => {

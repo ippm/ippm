@@ -1,3 +1,3 @@
-export default function update(options) {
+export default async function update(args) {
 
 }

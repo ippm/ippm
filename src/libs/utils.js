@@ -1,4 +1,4 @@
-import {readFile, access, R_OK} from 'js-utils-fs';
+import {readFile, writeFile, access, R_OK} from 'js-utils-fs';
 import * as path from 'path';
 
 const objHasOwnProperty = Object.prototype.hasOwnProperty;
@@ -46,24 +46,29 @@ export async function findDirWithFile(startDir, filename) {
 		return dir;
 	}
 }
-export const MANIFEST_FILENAME = 'ippm.lock';
 
-export async function findManifestFile(dir) {
-	const rootPackagePath = await findDirWithFile(dir, MANIFEST_FILENAME);
-	if (!rootPackagePath) throw new Error(`unable to find the manifest file "${MANIFEST_FILENAME}"`);
+export const IPPM_FILENAME = 'ippm.lock';
+export const LOCK_FILENAME = 'ippm.lock';
 
+export async function findIppmFile(dir) {
+	const rootPackagePath = await findDirWithFile(dir, IPPM_FILENAME);
+	if (!rootPackagePath) throw new Error(`unable to find the lock file "${IPPM_FILENAME}"`);
 	return rootPackagePath;
 }
 
-export async function readManifestFile(dir) {
-	const fileContent = await readFile(`${dir}/${MANIFEST_FILENAME}`, 'utf8');
-	const manifest = JSON.parse(fileContent);
+export async function readLockFile(dir) {
+	const fileContent = await readFile(`${dir}/${LOCK_FILENAME}`, 'utf8');
+	const lock = JSON.parse(fileContent);
 
-	Object.keys(manifest.packages || {}).forEach(k => {
-		manifest.packages[k].name = k;
-		const pakInfo = manifest.packages[k];
-		manifest.packages[k] = Object.assign({dependencies: {}, main: 'index.js'}, pakInfo);
+	Object.keys(lock.packages || {}).forEach(k => {
+		const pakInfo = lock.packages[k];
+		lock.packages[k] = Object.assign({dependencies: {}, main: 'index.js'}, pakInfo);
 	});
 
-	return manifest;
+	return lock;
+}
+
+export async function writeLocktFile(dir, lock) {
+	const content = JSON.stringify(lock, undefined, '\t');
+	return writeFile(`${dir}/${LOCK_FILENAME}`, content, 'utf8');
 }
