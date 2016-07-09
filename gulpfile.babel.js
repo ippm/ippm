@@ -40,13 +40,10 @@ PACKAGES.forEach(pakName => {
 					presets: ['es2015-rollup'],
 					plugins: [
 						'transform-promise-to-bluebird',
-						'transform-runtime',
+						'transform-async-to-bluebird',
 						'transform-function-bind',
-						['transform-async-to-module-method', {
-							module: 'bluebird',
-							method: 'coroutine',
-						}],
 						'transform-class-properties',
+						'transform-runtime',
 					],
 					runtimeHelpers: true,
 				}),
