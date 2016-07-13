@@ -75,7 +75,7 @@ export class IppmSystem extends System {
 			ipfsUrl += nameMatch[2];
 		}
 
-		return super.normalize(ipfsUrl, parentName, parentName);
+		return super.normalize(ipfsUrl, parentName, skipExt);
 	}
 }
 
