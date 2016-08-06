@@ -47,8 +47,8 @@ export async function findDirWithFile(startDir, filename) {
 	}
 }
 
-export const IPPM_FILENAME = 'ippm.lock';
-export const LOCK_FILENAME = 'ippm.lock';
+export const IPPM_FILENAME = 'ippm.json';
+export const IPPM_LOCK_FILENAME = 'ippm.lock';
 
 export async function findIppmFile(dir) {
 	const rootPackagePath = await findDirWithFile(dir, IPPM_FILENAME);
@@ -57,7 +57,7 @@ export async function findIppmFile(dir) {
 }
 
 export async function readLockFile(dir) {
-	const fileContent = await readFile(`${dir}/${LOCK_FILENAME}`, 'utf8');
+	const fileContent = await readFile(`${dir}/${IPPM_LOCK_FILENAME}`, 'utf8');
 	const lock = JSON.parse(fileContent);
 
 	Object.keys(lock.packages || {}).forEach(k => {
@@ -70,5 +70,5 @@ export async function readLockFile(dir) {
 
 export async function writeLocktFile(dir, lock) {
 	const content = JSON.stringify(lock, undefined, '\t');
-	return writeFile(`${dir}/${LOCK_FILENAME}`, content, 'utf8');
+	return writeFile(`${dir}/${IPPM_LOCK_FILENAME}`, content, 'utf8');
 }
