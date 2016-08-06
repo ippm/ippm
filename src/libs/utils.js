@@ -68,7 +68,7 @@ export async function readLockFile(dir) {
 	return lock;
 }
 
-export async function writeLocktFile(dir, lock) {
+export async function writeLockFile(dir, lock) {
 	const content = JSON.stringify(lock, undefined, '\t');
 	return writeFile(`${dir}/${IPPM_LOCK_FILENAME}`, content, 'utf8');
 }

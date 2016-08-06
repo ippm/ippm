@@ -2,7 +2,7 @@ import {add as pakAdd} from '../libs/package';
 import {
 	findIppmFile,
 	readLockFile,
-	writeLocktFile,
+	writeLockFile,
 } from '../libs/utils';
 
 async function add(pakRaw, lock) {
@@ -31,5 +31,5 @@ export default async function install(args) {
 		const depMeta = await add(pak, lock);
 		lock.packages[''].dependencies[depMeta.name] = depMeta.version;
 	}
-	await writeLocktFile(projectPath, lock);
+	await writeLockFile(projectPath, lock);
 }
