@@ -21,7 +21,7 @@ const $ = lazyReq(require, {
 	exec: ['child_process', 'exec', toAsync],
 });
 
-const PACKAGES = qw('ippm ippm-node ippm-adder ippm-systemjs');
+const PACKAGES = qw('ippm ippm-adder ippm-systemjs');
 
 gulp.task('build', PACKAGES.map(p => `build-${p}`));
 gulp.task('build-min', PACKAGES.map(p => `build-min-${p}`));
