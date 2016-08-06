@@ -1,9 +1,9 @@
-import {add as pakAdd} from '../../libs/package';
+import {add as pakAdd} from '../libs/package';
 import {
 	findIppmFile,
 	readLockFile,
 	writeLocktFile,
-} from '../../libs/utils';
+} from '../libs/utils';
 
 async function add(pakRaw, lock) {
 	/* eslint-disable array-callback-return, no-param-reassign */

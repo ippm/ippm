@@ -1,4 +1,4 @@
-import * as cmds from './ippm/cmds';
+import * as cmds from './cmds';
 import yargs from 'yargs';
 import {asyncMain} from 'js-utils';
 import persistent from './libs/persistent';

@@ -3,8 +3,8 @@ import {
 	readLockFile,
 	objectValueIter,
 	objectIter,
-} from '../../libs/utils';
-import {fgGreen, fgBlue, reset} from '../../libs/colors';
+} from '../libs/utils';
+import {fgGreen, fgBlue, reset} from '../libs/colors';
 
 /* eslint-disable no-console */
 
