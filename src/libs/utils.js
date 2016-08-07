@@ -47,6 +47,14 @@ export async function findDirWithFile(startDir, filename) {
 	}
 }
 
+export function sortObjectKeys(obj, compareFn) {
+	const newObj = Object.create(null);
+	Object.keys(obj).sort(compareFn).forEach(k => {
+		newObj[k] = obj[k];
+	});
+	return newObj;
+}
+
 export const IPPM_FILENAME = 'ippm.json';
 export const IPPM_LOCK_FILENAME = 'ippm.lock';
 
@@ -69,6 +77,12 @@ export async function readLockFile(dir) {
 }
 
 export async function writeLockFile(dir, lock) {
+	const paks = lock.packages;
+	Object.keys(paks).forEach(name => {
+		paks[name].dependencies = sortObjectKeys(paks[name].dependencies);
+	});
+	// eslint-disable-next-line no-param-reassign
+	lock.packages = sortObjectKeys(lock.packages);
 	const content = JSON.stringify(lock, undefined, '\t');
 	return writeFile(`${dir}/${IPPM_LOCK_FILENAME}`, `${content}\n`, 'utf8');
 }
@@ -78,6 +92,8 @@ export async function readIppmFile(dir) {
 }
 
 export async function writeIppmFile(dir, ippm) {
+	// eslint-disable-next-line no-param-reassign
+	ippm.dependencies = sortObjectKeys(ippm.dependencies);
 	const content = JSON.stringify(ippm, undefined, '\t');
 	return writeFile(`${dir}/${IPPM_FILENAME}`, `${content}\n`, 'utf8');
 }
