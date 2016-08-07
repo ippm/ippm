@@ -1,8 +1,10 @@
 import {add as pakAdd} from '../libs/package';
 import {
 	findIppmFile,
+	readIppmFile,
 	readLockFile,
 	writeLockFile,
+	gcLock,
 } from '../libs/utils';
 
 async function add(pakRaw, lock) {
@@ -27,9 +29,14 @@ async function add(pakRaw, lock) {
 export default async function install(args) {
 	const projectPath = await findIppmFile(process.cwd());
 	const lock = await readLockFile(projectPath);
-	for (const pak of args.packages) {
+	let packages = args.packages;
+	if (0 === args.packages.length) {
+		const ippm = await readIppmFile(projectPath);
+		packages = Object.keys(ippm.dependencies).map(dep => `${dep}@${ippm.dependencies[dep]}`);
+	}
+	for (const pak of packages) {
 		const depMeta = await add(pak, lock);
 		lock.packages[''].dependencies[depMeta.name] = depMeta.version;
 	}
-	await writeLockFile(projectPath, lock);
+	await writeLockFile(projectPath, gcLock(lock));
 }

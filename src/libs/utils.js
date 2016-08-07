@@ -70,5 +70,40 @@ export async function readLockFile(dir) {
 
 export async function writeLockFile(dir, lock) {
 	const content = JSON.stringify(lock, undefined, '\t');
-	return writeFile(`${dir}/${IPPM_LOCK_FILENAME}`, content, 'utf8');
+	return writeFile(`${dir}/${IPPM_LOCK_FILENAME}`, `${content}\n`, 'utf8');
+}
+
+export async function readIppmFile(dir) {
+	return readFile(`${dir}/${IPPM_FILENAME}`, 'utf8').then(JSON.parse);
+}
+
+export async function writeIppmFile(dir, ippm) {
+	const content = JSON.stringify(ippm, undefined, '\t');
+	return writeFile(`${dir}/${IPPM_FILENAME}`, `${content}\n`, 'utf8');
+}
+
+export function getAllReachableDepNamesInLock(lock) {
+	const paks = lock.packages;
+	const reachedDeps = Object.create(null);
+	function visitPak(pakName) {
+		if (pakName !== '') reachedDeps[pakName] = true;
+		const deps = paks[pakName].dependencies;
+		Object.keys(deps).forEach(name => {
+			if (!(name in reachedDeps)) visitPak(`${name}@${deps[name]}`);
+		});
+	}
+	visitPak('');
+	return reachedDeps;
+}
+
+export function gcLock(lock) {
+	const paks = lock.packages;
+	const reachableDeps = getAllReachableDepNamesInLock(lock);
+	const newPaks = Object.create(null);
+	Object.keys(paks).forEach(pakName => {
+		if (pakName === '' || pakName in reachableDeps) newPaks[pakName] = paks[pakName];
+	});
+	const newLock = Object.assign({}, lock);
+	newLock.packages = newPaks;
+	return newLock;
 }
